@@ -29,6 +29,10 @@ This project is designed for use with the **SIMCOM SIM7600G-H** modem. It assume
   ```bash
   dotnet add package NAudio
   ```
+- **System.IO.Ports Library**: You'll also need to import the System.IO.Ports library to avoid an invalid reference error to the .NET Framework version of this library with the same name.
+  ```bash
+  dotnet add package System.IO.Ports
+  ```
 
 ## Project Structure
 
