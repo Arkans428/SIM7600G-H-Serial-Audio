@@ -5,7 +5,7 @@ This project contains C# classes designed to manage audio streaming and serial c
 
 ## Overview
 
-The code in this project is split into three main classes, each handling a different aspect of audio processing and serial communication:
+The code in this project is split into three main classes. Two are meant for testing, and the third contains the working code for this project:
 
 1. **`AudioDeviceManager`**: Lists available audio devices and their input/output channel capabilities.
 2. **`AudioStreamer`**: Captures audio input and plays it back through an output device in real-time (loopback).
@@ -15,13 +15,18 @@ The code in this project is split into three main classes, each handling a diffe
 
 - **Audio Device Management**: Easily list and select audio devices for further processing.
 - **Real-Time Audio Loopback**: Test audio input and output devices using real-time streaming with adjustable sample rate and channels.
-- **SIMCOM SIM7600G-H Modem Integration**: Send AT commands and transmit/receive audio data over serial communication with support for automated call handling.
+- **SIMCOM SIM7600G-H Modem Integration**: Send AT commands over the AT Command Port and transmit/receive audio data over the serial audio port.
 
 ## Hardware Requirements
 
 This project is designed for use with the **SIMCOM SIM7600G-H** modem. It assumes you have two serial interfaces configured for the modem:
 - One serial interface for AT command communication.
 - One serial interface for audio data transmission.
+If you are missing the serial audio port, you may need to change your USB PID configuration of the modem. Open the AT Command or modem port if unavailable and enter:
+  ```bash
+  AT+CUSBPIDSWITCH=9001,1,1
+  ```
+The modem will reboot automatically after receiving the command, and you should see both ports now.
 
 ## Software Requirements
 
