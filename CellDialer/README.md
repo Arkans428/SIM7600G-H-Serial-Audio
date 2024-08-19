@@ -22,7 +22,7 @@ The code in this project is split into three main classes. Two are meant for tes
 This project is designed for use with the **SIMCOM SIM7600G-H** modem. It assumes you have two serial interfaces configured for the modem:
 - One serial interface for AT command communication.
 - One serial interface for audio data transmission.
-If you are missing the serial audio port, you may need to change your USB PID configuration of the modem. Open the AT Command or modem port if unavailable and enter:
+- If you are missing the serial audio port, you may need to change your USB PID configuration of the modem. Open the AT Command or modem port if unavailable and enter:
   ```bash
   AT+CUSBPIDSWITCH=9001,1,1
   ```
