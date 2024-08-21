@@ -22,7 +22,7 @@ The code in this project is split into three main classes. Two are meant for tes
 This project is designed for use with the **SIMCOM SIM7600G-H** modem. It assumes you have two serial interfaces configured for the modem:
 - One serial interface for AT command communication.
 - One serial interface for audio data transmission.
-- If you are missing the serial audio port, you may need to change your USB PID configuration of the modem. Open the AT Command or modem port if unavailable and enter:
+- If you encounter errors stating it can't find the serial ports, you may need to change your USB PID configuration of the modem. Open the AT Command or modem port if unavailable and enter:
   ```bash
   AT+CUSBPIDSWITCH=9001,1,1
   ```
@@ -69,12 +69,12 @@ streamer.Stop();
 
 ### `SerialAudioPhone`
 
-The `SerialAudioPhone` class is designed specifically for working with the SIMCOM SIM7600G-H modem. It handles sending AT commands, initiating calls, and streaming audio through the modem’s audio serial port. The call continues until the user presses the "Esc" key or the call ends due to a "NO CARRIER" response from the modem.
+The `SerialAudioPhone` class is designed specifically for working with the SIMCOM SIM7600G-H modem. It handles sending AT commands, initiating calls, and streaming audio through the modem’s serial audio port. The call continues until the user presses the "Esc" key or the call ends due to a "NO CARRIER" response from the modem.
 
 #### Usage Example:
 ```csharp
-var phone = new SerialAudioPhone("COM3", "COM4");
-phone.StartCall("10086");
+var phone = new SerialAudioPhone();
+phone.StartCall("17805555555");
 ```
 
 ### Important Notes:
