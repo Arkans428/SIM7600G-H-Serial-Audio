@@ -115,4 +115,4 @@ If you have any suggestions or improvements, feel free to open an issue or submi
 
 ## License
 
-This project is licensed under the GNU General Publice License V3.
+This project is licensed under the MIT License.
