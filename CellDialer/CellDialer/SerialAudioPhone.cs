@@ -236,7 +236,7 @@ namespace CellDialer
             try
             {
                 atPort?.WriteLine($"{command}\r");
-                Thread.Sleep(50); // Reduced delay to speed up command processing
+                Thread.Sleep(70); // Reduced delay to speed up command processing
             }
             catch (IOException ex)
             {
