@@ -38,6 +38,10 @@ The modem will reboot automatically after receiving the command, and you should 
   ```bash
   dotnet add package System.IO.Ports
   ```
+- **System.Management Library**: You'll also need to import the System.Management library so the program can serch for the COM ports using the device id of the modem.
+  ```bash
+  dotnet add package System.Management
+  ```
 
 ## Project Structure
 
