@@ -158,7 +158,7 @@ namespace CellDialer
                 waveIn?.StartRecording();
                 waveOut?.Play();
 
-                // Start a thread to monitor keyboard input for ending the call
+                // Start a thread to monitor keyboard input for ending the call and playing DTMF tones
                 Thread inputThread = new Thread(MonitorKeyboardInput)
                 {
                     Priority = ThreadPriority.Highest // Set thread priority to highest to reduce latency
@@ -227,7 +227,7 @@ namespace CellDialer
             }
         }
 
-        // Method to send a DTMF tone during the call
+        // Method to send a DTMF tone during the call. Note: sending the # and * tones is not currently working.
         public void SendDtmfTone(char tone)
         {
             // Validate that the tone is a valid DTMF character (0-9, *, #, A-D)
