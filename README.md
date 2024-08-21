@@ -1,4 +1,3 @@
-
 # Audio and Serial Communication with SIMCOM SIM7600G-H Modem
 
 This project contains C# classes designed to manage audio streaming and serial communication with the SIMCOM SIM7600G-H modem. The modem is typically used in embedded systems or IoT devices for telecommunication and remote access.
@@ -9,23 +8,24 @@ The code in this project is split into three main classes. Two are meant for tes
 
 1. **`AudioDeviceManager`**: Lists available audio devices and their input/output channel capabilities.
 2. **`AudioStreamer`**: Captures audio input and plays it back through an output device in real-time (loopback).
-3. **`SerialAudioPhone`**: Manages serial communication with the SIMCOM SIM7600G-H modem, handling AT commands and audio streaming for phone calls.
+3. **`SerialAudioPhone`**: Manages serial communication with the SIMCOM SIM7600G-H modem, handling AT commands and audio streaming for phone calls. It now also includes the ability to send DTMF tones during a call.
 
 ## Key Features
 
 - **Audio Device Management**: Easily list and select audio devices for further processing.
 - **Real-Time Audio Loopback**: Test audio input and output devices using real-time streaming with adjustable sample rate and channels.
-- **SIMCOM SIM7600G-H Modem Integration**: Send AT commands over the AT Command Port and transmit/receive audio data over the serial audio port.
+- **SIMCOM SIM7600G-H Modem Integration**: Send AT commands over the AT Command Port and transmit/receive audio data over the serial audio port. The program can now send DTMF tones during an active call, including the standard tones (0-9, *, #) and extended tones (A-D).
 
 ## Hardware Requirements
 
 This project is designed for use with the **SIMCOM SIM7600G-H** modem. It assumes you have two serial interfaces configured for the modem:
 - One serial interface for AT command communication.
 - One serial interface for audio data transmission.
-- If you encounter errors stating it can't find the serial ports, you may need to change your USB PID configuration of the modem. Open the AT Command or modem port if unavailable and enter:
-  ```bash
-  AT+CUSBPIDSWITCH=9001,1,1
-  ```
+
+If you encounter errors stating it can't find the serial ports, you may need to change your USB PID configuration of the modem. Open the AT Command or modem port if available and enter:
+```bash
+AT+CUSBPIDSWITCH=9001,1,1
+```
 The modem will reboot automatically after receiving the command, and you should see both ports now.
 
 ## Software Requirements
@@ -38,7 +38,7 @@ The modem will reboot automatically after receiving the command, and you should 
   ```bash
   dotnet add package System.IO.Ports
   ```
-- **System.Management Library**: You'll also need to import the System.Management library so the program can serch for the COM ports using the device id of the modem.
+- **System.Management Library**: You'll also need to import the System.Management library so the program can search for the COM ports using the device ID of the modem.
   ```bash
   dotnet add package System.Management
   ```
@@ -84,6 +84,7 @@ phone.StartCall("17805555555");
 ### Important Notes:
 - The critical AT command `AT+CPCMREG=1` is sent right after dialing the phone number to ensure that audio transmission is enabled on the modem.
 - You can end the call manually by pressing the "Esc" key.
+- DTMF tones, including A, B, C, and D, can be sent during an active call by pressing the corresponding keys on the keyboard.
 
 ## How to Run
 
