@@ -94,6 +94,8 @@ phone.StartCall("17805555555");
 2. Install dependencies:
    ```bash
    dotnet add package NAudio
+   dotnet add package System.IO.Ports
+   dotnet add package System.Management
    ```
 3. Build and run the project:
    ```bash
