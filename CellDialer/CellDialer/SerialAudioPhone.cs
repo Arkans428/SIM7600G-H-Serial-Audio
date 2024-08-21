@@ -1,5 +1,6 @@
 using System.IO.Ports;
 using System.Management;
+using System.Text.RegularExpressions;
 using NAudio.Wave;
 
 namespace CellDialer
@@ -38,27 +39,26 @@ namespace CellDialer
                 // Configure the input device for capturing audio
                 waveIn = new WaveInEvent
                 {
-                    WaveFormat = new WaveFormat(sampleRate, channels),
+                    WaveFormat = new WaveFormat(sampleRate, channels), // Use standard telephony sample rate of 8000 Hz
                     BufferMilliseconds = 30 // Moderate buffer size for stable audio
                 };
 
                 // Configure the output device for playing audio
                 waveOut = new WaveOutEvent
                 {
-                    DesiredLatency = 30, // Balanced latency for smooth playback
+                    DesiredLatency = 50, // Increased latency for smoother playback
                     NumberOfBuffers = 4 // Use a moderate number of buffers to handle data flow
                 };
 
                 buffer = new BufferedWaveProvider(waveIn.WaveFormat)
                 {
-                    BufferLength = 8192, // Balanced buffer length for smoother playback
+                    BufferLength = 4096, // Reduced buffer length to avoid delays and stretching
                     DiscardOnBufferOverflow = true // Discard old data if buffer overflows to avoid full buffer issues
                 };
 
-                // Adjust the volume of the audio playback if needed
-                waveOut.Volume = 0.8f; // Slightly reduce volume to avoid clipping
+                // Set the output volume to maximum
+                waveOut.Volume = 1.0f; // Maximize the volume to ensure the output is loud enough
 
-                // Send captured audio data to the audio serial port
                 waveIn.DataAvailable += (sender, e) =>
                 {
                     try
@@ -89,13 +89,12 @@ namespace CellDialer
             }
         }
 
-       
         // Method to find the correct serial port based on the device identifier
         private string? FindSerialPortByDeviceId(string deviceId)
         {
             try
             {
-#pragma warning disable CS8602 // Derefrence of possible null reference. We know this isn't going to happen but the compiler seems to think otherwise...
+#pragma warning disable CS8602 // Dereference of possibly null reference. We know this isn't going to happen, but the compiler seems to think otherwise...
                 using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity"))
                 {
                     foreach (var device in searcher.Get())
@@ -108,7 +107,7 @@ namespace CellDialer
                         }
                     }
                 }
-#pragma warning restore CS8602 // Re-enable warnings 
+#pragma warning restore CS8602 // Re-enable warnings
             }
             catch (ManagementException ex)
             {
@@ -126,9 +125,27 @@ namespace CellDialer
         {
             try
             {
+                // Validate the phone number against the North American Numbering Plan (NANP)
+                if (!IsValidPhoneNumber(phoneNumber))
+                {
+                    Console.WriteLine("Invalid phone number. Please enter a 10- or 11-digit phone number.");
+                    return; // Exit the method if the input is invalid
+                }
+
                 isCallActive = true;
                 atPort?.Open(); // Open the AT command serial port
                 audioPort?.Open(); // Open the audio serial port
+
+                // Add a short delay to ensure ports are fully initialized
+                Thread.Sleep(300);
+
+                // Resend critical audio commands to ensure proper setup
+                SendCommand("AT+CGREG=0"); // Disable AGC for more consistent volume
+                SendCommand("AT+CECM=7");
+                SendCommand("AT+CECWB=0x0800");
+                SendCommand("AT+CMICGAIN=3");
+                SendCommand("AT+COUTGAIN=5");
+                SendCommand("AT+CNSN=0x1000");
 
                 // Send initial AT commands to set up the call
                 SendCommand("AT");
@@ -210,17 +227,66 @@ namespace CellDialer
             }
         }
 
-        // Monitor keyboard input to end the call when 'Esc' is pressed
+        // Method to send a DTMF tone during the call
+        public void SendDtmfTone(char tone)
+        {
+            // Validate that the tone is a valid DTMF character (0-9, *, #, A-D)
+            if ("0123456789*#ABCD".IndexOf(tone) >= 0)
+            {
+                SendCommand($"AT+VTS={tone}"); // Send the DTMF tone
+                Console.WriteLine($"Sent DTMF tone: {tone}");
+            }
+            else
+            {
+                Console.WriteLine($"Invalid DTMF tone: {tone}");
+            }
+        }
+
+        // Monitor keyboard input to end the call or send DTMF tones
         private void MonitorKeyboardInput()
         {
             try
             {
-                Console.WriteLine("Press 'Esc' to end the call.");
+                Console.WriteLine("Press 'Esc' to end the call. Press any number key, *, #, A, B, C, or D to send DTMF tones.");
                 while (isCallActive)
                 {
-                    if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Escape)
+                    if (Console.KeyAvailable)
                     {
-                        isCallActive = false; // End the call if 'Esc' is pressed
+                        var key = Console.ReadKey(true).Key;
+
+                        if (key == ConsoleKey.Escape)
+                        {
+                            isCallActive = false; // End the call if 'Esc' is pressed
+                        }
+                        else
+                        {
+                            // Check for DTMF tones (0-9, *, #, A, B, C, D)
+                            char dtmfTone = key switch
+                            {
+                                ConsoleKey.D1 => '1',
+                                ConsoleKey.D2 => '2',
+                                ConsoleKey.D3 => '3',
+                                ConsoleKey.D4 => '4',
+                                ConsoleKey.D5 => '5',
+                                ConsoleKey.D6 => '6',
+                                ConsoleKey.D7 => '7',
+                                ConsoleKey.D8 => '8',
+                                ConsoleKey.D9 => '9',
+                                ConsoleKey.D0 => '0',
+                                ConsoleKey.A => 'A',
+                                ConsoleKey.B => 'B',
+                                ConsoleKey.C => 'C',
+                                ConsoleKey.D => 'D',
+                                ConsoleKey.Oem1 => '*',
+                                ConsoleKey.OemPlus => '#',
+                                _ => '\0' // Invalid character, ignored
+                            };
+
+                            if (dtmfTone != '\0')
+                            {
+                                SendDtmfTone(dtmfTone);
+                            }
+                        }
                     }
                 }
             }
@@ -236,7 +302,7 @@ namespace CellDialer
             try
             {
                 atPort?.WriteLine($"{command}\r");
-                Thread.Sleep(70); // Reduced delay to speed up command processing
+                Thread.Sleep(80); // Reduced delay to speed up command processing
             }
             catch (IOException ex)
             {
@@ -269,6 +335,23 @@ namespace CellDialer
             {
                 Console.WriteLine("Error ending the call: " + ex.Message);
             }
+        }
+
+        // Validate a phone number according to the North American Numbering Plan (NANP)
+        
+        private bool IsValidPhoneNumber(string? phoneNumber)
+        {
+            if (string.IsNullOrWhiteSpace(phoneNumber))
+            {
+                return false; // Return false if the phone number is null or whitespace
+            }
+
+            // Regular expression pattern for validating 10- or 11-digit NANP numbers
+            // If you're coding this in a country outside of north america, you can comment out this line and change the return to 'true' 
+            string pattern = @"^(1?)([2-9][0-9]{2})([2-9][0-9]{2})([0-9]{4})$";
+
+            // Validate the phone number against the pattern
+            return Regex.IsMatch(phoneNumber, pattern);
         }
     }
 }
