@@ -89,7 +89,7 @@ phone.StartCall("17805555555");
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/yourproject.git
+   git clone https://github.com/Arkans428/SIM7600G-H-Serial-Audio.git
    ```
 2. Install dependencies:
    ```bash
