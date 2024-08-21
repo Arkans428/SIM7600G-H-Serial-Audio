@@ -5,7 +5,7 @@ This project contains C# classes designed to manage audio streaming and serial c
 
 ## Overview
 
-The code in this project is split into three main classes, each handling a different aspect of audio processing and serial communication:
+The code in this project is split into three main classes. Two are meant for testing, and the third contains the working code for this project:
 
 1. **`AudioDeviceManager`**: Lists available audio devices and their input/output channel capabilities.
 2. **`AudioStreamer`**: Captures audio input and plays it back through an output device in real-time (loopback).
@@ -15,19 +15,28 @@ The code in this project is split into three main classes, each handling a diffe
 
 - **Audio Device Management**: Easily list and select audio devices for further processing.
 - **Real-Time Audio Loopback**: Test audio input and output devices using real-time streaming with adjustable sample rate and channels.
-- **SIMCOM SIM7600G-H Modem Integration**: Send AT commands and transmit/receive audio data over serial communication with support for automated call handling.
+- **SIMCOM SIM7600G-H Modem Integration**: Send AT commands over the AT Command Port and transmit/receive audio data over the serial audio port.
 
 ## Hardware Requirements
 
 This project is designed for use with the **SIMCOM SIM7600G-H** modem. It assumes you have two serial interfaces configured for the modem:
 - One serial interface for AT command communication.
 - One serial interface for audio data transmission.
+- If you encounter errors stating it can't find the serial ports, you may need to change your USB PID configuration of the modem. Open the AT Command or modem port if unavailable and enter:
+  ```bash
+  AT+CUSBPIDSWITCH=9001,1,1
+  ```
+The modem will reboot automatically after receiving the command, and you should see both ports now.
 
 ## Software Requirements
 
 - **NAudio Library**: This project uses the NAudio library for handling audio device management and streaming in C#. You can install it via NuGet:
   ```bash
   dotnet add package NAudio
+  ```
+- **System.IO.Ports Library**: You'll also need to import the System.IO.Ports library to avoid an invalid reference error to the .NET Framework version of this library with the same name.
+  ```bash
+  dotnet add package System.IO.Ports
   ```
 
 ## Project Structure
@@ -60,12 +69,12 @@ streamer.Stop();
 
 ### `SerialAudioPhone`
 
-The `SerialAudioPhone` class is designed specifically for working with the SIMCOM SIM7600G-H modem. It handles sending AT commands, initiating calls, and streaming audio through the modem’s audio serial port. The call continues until the user presses the "Esc" key or the call ends due to a "NO CARRIER" response from the modem.
+The `SerialAudioPhone` class is designed specifically for working with the SIMCOM SIM7600G-H modem. It handles sending AT commands, initiating calls, and streaming audio through the modem’s serial audio port. The call continues until the user presses the "Esc" key or the call ends due to a "NO CARRIER" response from the modem.
 
 #### Usage Example:
 ```csharp
-var phone = new SerialAudioPhone("COM3", "COM4");
-phone.StartCall("10086");
+var phone = new SerialAudioPhone();
+phone.StartCall("17805555555");
 ```
 
 ### Important Notes:
@@ -76,7 +85,7 @@ phone.StartCall("10086");
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/Arkans428/SIM7600G-H-Serial-Audio.git
+   git clone https://github.com/yourusername/yourproject.git
    ```
 2. Install dependencies:
    ```bash
@@ -100,4 +109,4 @@ If you have any suggestions or improvements, feel free to open an issue or submi
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the GNU General Publice License V3.
