@@ -64,16 +64,10 @@ namespace CellDialer
 
         static void TestSerialAudioPhone()
         {
-            Console.Write("Enter AT port (e.g., COM3): ");
-            string atPort = Console.ReadLine();
-
-            Console.Write("Enter Audio port (e.g., COM4): ");
-            string audioPort = Console.ReadLine();
-
             Console.Write("Enter phone number to dial: ");
             string phoneNumber = Console.ReadLine();
 
-            var phone = new SerialAudioPhone(atPort, audioPort);
+            var phone = new SerialAudioPhone();
             phone.StartCall(phoneNumber);
 
             Console.WriteLine("Call started. Press 'Esc' to end the call.");
