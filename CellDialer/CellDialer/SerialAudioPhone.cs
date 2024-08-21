@@ -95,7 +95,7 @@ namespace CellDialer
         {
             try
             {
-#pragma warning disable CS8602 // Derefrence of possible null reference 
+#pragma warning disable CS8602 // Derefrence of possible null reference. We know this isn't going to happen but the compiler seems to think otherwise...
                 using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity"))
                 {
                     foreach (var device in searcher.Get())
