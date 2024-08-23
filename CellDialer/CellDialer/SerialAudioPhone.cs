@@ -45,73 +45,66 @@ namespace CellDialer
 
         public SerialAudioPhone(int baudRate = 115200, int sampleRate = 8000, int channels = 1)
         {
-            try
-            {
-                // Locate the serial ports based on their device IDs
-                string? atPortName = FindSerialPortByDeviceId(AtPortDeviceId);
-                string? audioPortName = FindSerialPortByDeviceId(AudioPortDeviceId);
+            // Locate the serial ports based on their device IDs
+            string? atPortName = FindSerialPortByDeviceId(AtPortDeviceId);
+            string? audioPortName = FindSerialPortByDeviceId(AudioPortDeviceId);
 
-                // If either port is not found, throw an exception
-                if (atPortName is null || audioPortName is null)
+            // If either port is not found, throw an exception
+            if (atPortName is null || audioPortName is null)
+            {
+                throw new InvalidOperationException("Unable to locate one or both required serial ports.");
+            }
+
+            // Initialize the serial ports with the located COM port names
+            atPort = new SerialPort(atPortName, baudRate);
+            audioPort = new SerialPort(audioPortName, baudRate);
+
+            // Configure the input device for capturing audio
+            waveIn = new WaveInEvent
+            {
+                WaveFormat = new WaveFormat(sampleRate, channels), // Use standard telephony sample rate of 8000 Hz
+                BufferMilliseconds = 30 // Moderate buffer size for stable audio
+            };
+
+            // Configure the output device for playing audio
+            waveOut = new WaveOutEvent
+            {
+                DesiredLatency = 50, // Increased latency for smoother playback
+                NumberOfBuffers = 4 // Use a moderate number of buffers to handle data flow
+            };
+
+            buffer = new BufferedWaveProvider(waveIn.WaveFormat)
+            {
+                BufferLength = 4096, // Reduced buffer length to avoid delays and stretching
+                DiscardOnBufferOverflow = true // Discard old data if buffer overflows to avoid full buffer issues
+            };
+
+            // Set the output volume to maximum
+            waveOut.Volume = 1.0f; // Maximize the volume to ensure the output is loud enough
+
+            waveIn.DataAvailable += (sender, e) =>
+            {
+                try
                 {
-                    throw new InvalidOperationException("Unable to locate one or both required serial ports.");
+                    audioPort.Write(e.Buffer, 0, e.BytesRecorded);
                 }
-
-                // Initialize the serial ports with the located COM port names
-                atPort = new SerialPort(atPortName, baudRate);
-                audioPort = new SerialPort(audioPortName, baudRate);
-
-                // Configure the input device for capturing audio
-                waveIn = new WaveInEvent
+                catch (IOException ex)
                 {
-                    WaveFormat = new WaveFormat(sampleRate, channels), // Use standard telephony sample rate of 8000 Hz
-                    BufferMilliseconds = 30 // Moderate buffer size for stable audio
-                };
-
-                // Configure the output device for playing audio
-                waveOut = new WaveOutEvent
+                    Console.WriteLine("I/O Error while writing audio data: " + ex.Message);
+                }
+                catch (UnauthorizedAccessException ex)
                 {
-                    DesiredLatency = 50, // Increased latency for smoother playback
-                    NumberOfBuffers = 4 // Use a moderate number of buffers to handle data flow
-                };
-
-                buffer = new BufferedWaveProvider(waveIn.WaveFormat)
+                    Console.WriteLine("Access Error while writing audio data: " + ex.Message);
+                }
+                catch (Exception ex)
                 {
-                    BufferLength = 4096, // Reduced buffer length to avoid delays and stretching
-                    DiscardOnBufferOverflow = true // Discard old data if buffer overflows to avoid full buffer issues
-                };
+                    Console.WriteLine("Unexpected Error while writing audio data: " + ex.Message);
+                }
+            };
 
-                // Set the output volume to maximum
-                waveOut.Volume = 1.0f; // Maximize the volume to ensure the output is loud enough
+            waveOut.Init(buffer); // Initialize the output device with the buffered audio data
 
-                waveIn.DataAvailable += (sender, e) =>
-                {
-                    try
-                    {
-                        audioPort.Write(e.Buffer, 0, e.BytesRecorded);
-                    }
-                    catch (IOException ex)
-                    {
-                        Console.WriteLine("I/O Error while writing audio data: " + ex.Message);
-                    }
-                    catch (UnauthorizedAccessException ex)
-                    {
-                        Console.WriteLine("Access Error while writing audio data: " + ex.Message);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("Unexpected Error while writing audio data: " + ex.Message);
-                    }
-                };
-
-                waveOut.Init(buffer); // Initialize the output device with the buffered audio data
-
-                isCallActive = false; // Set the call as inactive initially
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error initializing SerialAudioPhone: " + ex.Message);
-            }
+            isCallActive = false; // Set the call as inactive initially
         }
 
         // Method to find the correct serial port based on the device identifier
@@ -119,7 +112,7 @@ namespace CellDialer
         {
             try
             {
-#pragma warning disable CS8602 // Dereference of possibly null reference. We know this isn't going to happen, but the compiler seems to think otherwise...
+#pragma warning disable CS8602, CA1416 // Dereference of possibly null reference. We know this isn't going to happen, but the compiler seems to think otherwise...
                 using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity"))
                 {
                     foreach (var device in searcher.Get())
@@ -132,7 +125,7 @@ namespace CellDialer
                         }
                     }
                 }
-#pragma warning restore CS8602 // Re-enable warnings
+#pragma warning restore CS8602, CA1416 // Re-enable warnings
             }
             catch (ManagementException ex)
             {

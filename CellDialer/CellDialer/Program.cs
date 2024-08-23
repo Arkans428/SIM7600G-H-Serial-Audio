@@ -6,8 +6,22 @@ namespace CellDialer
     {
         static void Main(string[] args)
         {
-            var phone = new SerialAudioPhone();
+            SerialAudioPhone phone;
 
+            try
+            {
+                // Attempt to initialize SerialAudioPhone
+                phone = new SerialAudioPhone();
+            }
+            catch (Exception ex)
+            {
+                // If initialization fails, display the error and wait for keypress before exiting
+                Console.WriteLine("Failed to initialize SerialAudioPhone:");
+                Console.WriteLine(ex.Message);
+                Console.WriteLine("Press any key to close the program...");
+                Console.ReadKey();
+                return; // Exit the program since initialization failed
+            }
             // Start SMS monitoring
             phone.StartSmsMonitoring();
 
