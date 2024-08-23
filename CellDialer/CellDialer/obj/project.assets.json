@@ -819,9 +819,9 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio\\CellDialer\\CellDialer\\CellDialer.csproj",
-      "projectName": "CellDialer",
-      "projectPath": "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio\\CellDialer\\CellDialer\\CellDialer.csproj",
+      "projectUniqueName": "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio\\CellDialer\\CellDialer\\SIM7600G-H Modem Tool.csproj",
+      "projectName": "SIM7600G-H Modem Tool",
+      "projectPath": "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio\\CellDialer\\CellDialer\\SIM7600G-H Modem Tool.csproj",
       "packagesPath": "C:\\Users\\Kiern\\.nuget\\packages\\",
       "outputPath": "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio\\CellDialer\\CellDialer\\obj\\",
       "projectStyle": "PackageReference",

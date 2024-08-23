@@ -28,7 +28,7 @@ using System.Management;
 using System.Text.RegularExpressions;
 using NAudio.Wave;
 
-namespace CellDialer
+namespace ModemTool
 {
     public class SerialAudioPhone : IDisposable
     {

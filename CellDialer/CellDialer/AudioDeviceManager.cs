@@ -25,7 +25,7 @@ SOFTWARE.
 using NAudio.CoreAudioApi;
 using System.Runtime.InteropServices;
 
-namespace CellDialer
+namespace ModemTool
 {
     public class AudioDeviceManager
     {

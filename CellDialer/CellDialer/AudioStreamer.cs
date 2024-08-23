@@ -24,7 +24,7 @@ SOFTWARE.
 
 using NAudio.Wave;
 
-namespace CellDialer
+namespace ModemTool
 {
     public class AudioStreamer
     {
