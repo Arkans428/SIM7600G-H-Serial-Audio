@@ -28,7 +28,7 @@ using NAudio.Wave;
 
 namespace CellDialer
 {
-    public class SerialAudioPhone
+    public class SerialAudioPhone : IDisposable
     {
         private SerialPort? atPort; // Serial port for sending AT commands, initialized later
         private SerialPort? audioPort; // Serial port for transmitting audio data, initialized later
@@ -38,6 +38,11 @@ namespace CellDialer
         private bool isCallActive; // Flag to track if the call is active
         private Thread? smsMonitoringThread; // Thread for monitoring incoming SMS
         private bool isSmsMonitoringActive; // Flag to control SMS monitoring
+        private bool disposed = false;
+        private bool isEchoSuppressionEnabled = true;
+
+        // Echo suppression level (range 0 to 1)
+        private float echoSuppressionFactor = 0.5f;
 
         // Device identifiers for the AT port and the Audio port
         private const string AtPortDeviceId = "USB\\VID_1E0E&PID_9001&MI_02";
@@ -62,31 +67,36 @@ namespace CellDialer
             // Configure the input device for capturing audio
             waveIn = new WaveInEvent
             {
-                WaveFormat = new WaveFormat(sampleRate, channels), // Use standard telephony sample rate of 8000 Hz
-                BufferMilliseconds = 30 // Moderate buffer size for stable audio
+                WaveFormat = new WaveFormat(sampleRate, channels),
+                BufferMilliseconds = 30
             };
 
             // Configure the output device for playing audio
             waveOut = new WaveOutEvent
             {
-                DesiredLatency = 50, // Increased latency for smoother playback
-                NumberOfBuffers = 4 // Use a moderate number of buffers to handle data flow
+                DesiredLatency = 50,
+                NumberOfBuffers = 4
             };
 
             buffer = new BufferedWaveProvider(waveIn.WaveFormat)
             {
-                BufferLength = 4096, // Reduced buffer length to avoid delays and stretching
-                DiscardOnBufferOverflow = true // Discard old data if buffer overflows to avoid full buffer issues
+                BufferLength = 4096,
+                DiscardOnBufferOverflow = true
             };
 
-            // Set the output volume to maximum
-            waveOut.Volume = 1.0f; // Maximize the volume to ensure the output is loud enough
+            waveOut.Volume = 0.7f; // Slightly increase the volume for better clarity
 
             waveIn.DataAvailable += (sender, e) =>
             {
                 try
                 {
-                    audioPort.Write(e.Buffer, 0, e.BytesRecorded);
+                    // Adaptive echo suppression: lower the outgoing audio volume if audio is playing
+                    float adjustedVolume = waveOut.PlaybackState == PlaybackState.Playing
+                        ? echoSuppressionFactor
+                        : 1.0f;
+
+                    byte[] adjustedBuffer = AdjustAudioVolume(e.Buffer, e.BytesRecorded, adjustedVolume);
+                    audioPort.Write(adjustedBuffer, 0, e.BytesRecorded);
                 }
                 catch (IOException ex)
                 {
@@ -102,9 +112,8 @@ namespace CellDialer
                 }
             };
 
-            waveOut.Init(buffer); // Initialize the output device with the buffered audio data
-
-            isCallActive = false; // Set the call as inactive initially
+            waveOut.Init(buffer);
+            isCallActive = false;
         }
 
         // Method to find the correct serial port based on the device identifier
@@ -143,43 +152,43 @@ namespace CellDialer
         {
             try
             {
-                // Validate the phone number against the North American Numbering Plan (NANP)
                 if (!IsValidPhoneNumber(phoneNumber))
                 {
                     Console.WriteLine("Invalid phone number. Please enter a 10- or 11-digit phone number.");
-                    return; // Exit the method if the input is invalid
+                    return;
                 }
 
                 isCallActive = true;
-                atPort?.Open(); // Open the AT command serial port
-                audioPort?.Open(); // Open the audio serial port
 
-                // Add a short delay to ensure ports are fully initialized
+                if (atPort?.IsOpen == false)
+                {
+                    atPort.Open();
+                }
+
+                if (audioPort?.IsOpen == false)
+                {
+                    audioPort.Open();
+                }
+
                 Thread.Sleep(300);
 
-                // Resend critical audio commands to ensure proper setup
-                SendCommand("AT+CGREG=0"); // Disable AGC for more consistent volume
+                SendCommand("AT+CGREG=0");
                 SendCommand("AT+CECM=7");
                 SendCommand("AT+CECWB=0x0800");
                 SendCommand("AT+CMICGAIN=3");
-                SendCommand("AT+COUTGAIN=5");
+                SendCommand("AT+COUTGAIN=4");
                 SendCommand("AT+CNSN=0x1000");
 
-                // Send initial AT commands to set up the call
                 SendCommand("AT");
                 SendCommand($"ATD{phoneNumber};");
-
-                // Critical AT command to enable audio over the serial port
                 SendCommand("AT+CPCMREG=1");
 
-                // Start capturing and playing audio
                 waveIn?.StartRecording();
                 waveOut?.Play();
 
-                // Start a thread to monitor keyboard input for ending the call
                 Thread inputThread = new Thread(MonitorKeyboardInput)
                 {
-                    Priority = ThreadPriority.Highest // Set thread priority to highest to reduce latency
+                    Priority = ThreadPriority.Highest
                 };
                 inputThread.Start();
 
@@ -187,31 +196,27 @@ namespace CellDialer
                 {
                     try
                     {
-                        // Check for responses from the AT command serial port
                         if (atPort != null && atPort.BytesToRead > 0)
                         {
                             string response = atPort.ReadExisting();
                             Console.WriteLine(response);
                             if (response.Contains("NO CARRIER"))
                             {
-                                isCallActive = false; // End the call if "NO CARRIER" is detected
+                                isCallActive = false;
                             }
                         }
 
-                        // Read and play incoming audio data from the audio serial port
                         if (audioPort != null && audioPort.BytesToRead > 0)
                         {
                             byte[] audioData = new byte[audioPort.BytesToRead];
                             audioPort.Read(audioData, 0, audioData.Length);
 
-                            // Prevent buffer overflow by checking available space
                             if (buffer != null && buffer.BufferedDuration.TotalMilliseconds < 100)
                             {
-                                buffer.AddSamples(audioData, 0, audioData.Length); // Add the received audio data to the playback buffer
+                                buffer.AddSamples(audioData, 0, audioData.Length);
                             }
                             else
                             {
-                                // Skip adding data to avoid overflow if the buffer is too full
                                 Console.WriteLine("Skipping audio data to avoid buffer overflow.");
                             }
                         }
@@ -232,7 +237,7 @@ namespace CellDialer
                         isCallActive = false;
                     }
 
-                    Thread.Sleep(10); // Short delay to prevent high CPU usage while keeping latency low
+                    Thread.Sleep(10);
                 }
             }
             catch (Exception ex)
@@ -241,9 +246,23 @@ namespace CellDialer
             }
             finally
             {
-                EndCall(); // Ensure the call is ended cleanly and resources are released
+                EndCall();
             }
         }
+
+        private byte[] AdjustAudioVolume(byte[] buffer, int length, float volumeFactor)
+        {
+            for (int i = 0; i < length; i += 2)
+            {
+                short sample = BitConverter.ToInt16(buffer, i);
+                sample = (short)(sample * volumeFactor);
+                byte[] adjustedSample = BitConverter.GetBytes(sample);
+                buffer[i] = adjustedSample[0];
+                buffer[i + 1] = adjustedSample[1];
+            }
+            return buffer;
+        }
+
 
         // Method to send a DTMF tone during the call
         public void SendDtmfTone(char tone)
@@ -346,7 +365,7 @@ namespace CellDialer
                 waveIn?.StopRecording(); // Stop capturing audio from the input device
                 waveOut?.Stop(); // Stop playing audio to the output device
                 //if (atPort?.IsOpen == true) atPort.Close(); // Close the AT command serial port
-                if (audioPort?.IsOpen == true) audioPort.Close(); // Close the audio serial port
+                //if (audioPort?.IsOpen == true) audioPort.Close(); // Close the audio serial port
                 Console.WriteLine("Call ended.");
             }
             catch (Exception ex)
@@ -533,6 +552,48 @@ namespace CellDialer
             {
                 Console.WriteLine($"Error deleting all SMS messages: {ex.Message}");
             }
+        }
+
+        // Dispose method for releasing resources
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposed) return;
+
+            if (disposing)
+            {
+                // Stop SMS monitoring if active
+                StopSmsMonitoring();
+
+                // Dispose managed resources
+                waveIn?.Dispose();
+                waveOut?.Dispose();
+
+                // Check if ports are open and close them before disposal
+                if (atPort?.IsOpen == true)
+                {
+                    atPort.Close();
+                }
+                atPort?.Dispose();
+
+                if (audioPort?.IsOpen == true)
+                {
+                    audioPort.Close();
+                }
+                audioPort?.Dispose();
+            }
+
+            disposed = true;
+        }
+
+        ~SerialAudioPhone()
+        {
+            Dispose(false);
         }
     }
 }

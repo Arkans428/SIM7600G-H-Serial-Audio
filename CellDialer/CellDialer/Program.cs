@@ -69,7 +69,7 @@ namespace CellDialer
                             break;
                         case "8":
                             // Stop SMS monitoring before exiting
-                            phone.StopSmsMonitoring();
+                            phone.Dispose();
                             Console.WriteLine("Exiting...");
                             return;
                         default:
