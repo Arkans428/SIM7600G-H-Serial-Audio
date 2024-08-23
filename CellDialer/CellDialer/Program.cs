@@ -1,27 +1,3 @@
-/*
-MIT License
-
-Copyright (c) 2024 Kiernan Verhagen
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
-
 using System;
 
 namespace CellDialer
@@ -30,7 +6,11 @@ namespace CellDialer
     {
         static void Main(string[] args)
         {
-            // Main program loop
+            var phone = new SerialAudioPhone();
+
+            // Start SMS monitoring
+            phone.StartSmsMonitoring();
+
             try
             {
                 while (true)
@@ -40,32 +20,45 @@ namespace CellDialer
                     Console.WriteLine("1. List Audio Devices");
                     Console.WriteLine("2. Test Audio Streaming (Loopback)");
                     Console.WriteLine("3. Test Serial Audio Phone Call");
-                    Console.WriteLine("4. Exit");
+                    Console.WriteLine("4. Send Text Message");
+                    Console.WriteLine("5. Read Text Messages");
+                    Console.WriteLine("6. Delete a Specific SMS");
+                    Console.WriteLine("7. Delete All SMS Messages");
+                    Console.WriteLine("8. Exit");
                     Console.Write("Enter your choice: ");
 
-                    // Read user input and handle potential null input
-                    string? choice = Console.ReadLine(); // 'choice' can be null, so it's marked as nullable
+                    // Read user input
+                    string? choice = Console.ReadLine();
 
                     switch (choice)
                     {
                         case "1":
-                            // Call the method to list available audio devices
                             TestAudioDeviceManager();
                             break;
                         case "2":
-                            // Call the method to test audio streaming (loopback)
                             TestAudioStreamer();
                             break;
                         case "3":
-                            // Call the method to test the serial audio phone call functionality
-                            TestSerialAudioPhone();
+                            TestSerialAudioPhone(phone);
                             break;
                         case "4":
-                            // Exit the program
+                            SendTextMessage(phone);
+                            break;
+                        case "5":
+                            ReadTextMessages(phone);
+                            break;
+                        case "6":
+                            DeleteSpecificSms(phone);
+                            break;
+                        case "7":
+                            DeleteAllSmsMessages(phone);
+                            break;
+                        case "8":
+                            // Stop SMS monitoring before exiting
+                            phone.StopSmsMonitoring();
                             Console.WriteLine("Exiting...");
                             return;
                         default:
-                            // Handle invalid menu options
                             Console.WriteLine("Invalid choice. Please try again.");
                             break;
                     }
@@ -73,7 +66,6 @@ namespace CellDialer
             }
             catch (Exception ex)
             {
-                // Handle any unexpected errors that occur in the main program loop
                 Console.WriteLine("An error occurred: " + ex.Message);
             }
         }
@@ -132,7 +124,7 @@ namespace CellDialer
         }
 
         // Method to test making a phone call using the serial audio phone functionality
-        static void TestSerialAudioPhone()
+        static void TestSerialAudioPhone(SerialAudioPhone phone)
         {
             try
             {
@@ -147,11 +139,8 @@ namespace CellDialer
                     return; // Exit the method if the input is invalid
                 }
 
-                // Initialize the SerialAudioPhone and start the call
-                var phone = new SerialAudioPhone();
-                phone.StartCall(phoneNumber); // Start the call with the provided phone number
-
-                // Console.WriteLine("Call started. Press 'Esc' to end the call.");
+                // Start the call with the provided phone number
+                phone.StartCall(phoneNumber);
             }
             catch (Exception ex)
             {
@@ -159,6 +148,91 @@ namespace CellDialer
                 Console.WriteLine("Error during phone call: " + ex.Message);
             }
         }
+
+        // Method to send a text message
+        static void SendTextMessage(SerialAudioPhone phone)
+        {
+            try
+            {
+                // Prompt the user to enter the recipient's phone number
+                Console.Write("Enter recipient's phone number: ");
+                string? phoneNumber = Console.ReadLine();
+
+                // Validate that the phone number is not empty or whitespace
+                if (string.IsNullOrWhiteSpace(phoneNumber))
+                {
+                    Console.WriteLine("Invalid phone number.");
+                    return; // Exit the method if the input is invalid
+                }
+
+                // Prompt the user to enter the text message
+                Console.Write("Enter your message: ");
+                string? message = Console.ReadLine();
+
+                // Validate that the message is not empty or whitespace
+                if (string.IsNullOrWhiteSpace(message))
+                {
+                    Console.WriteLine("Invalid message.");
+                    return; // Exit the method if the input is invalid
+                }
+
+                // Send the text message
+                phone.SendTextMessage(phoneNumber, message);
+            }
+            catch (Exception ex)
+            {
+                // Handle errors that may occur when sending the text message
+                Console.WriteLine("Error sending text message: " + ex.Message);
+            }
+        }
+
+        // Method to read text messages
+        static void ReadTextMessages(SerialAudioPhone phone)
+        {
+            try
+            {
+                // Read and display the stored text messages
+                phone.ReadTextMessages();
+            }
+            catch (Exception ex)
+            {
+                // Handle errors that may occur when reading the text messages
+                Console.WriteLine("Error reading text messages: " + ex.Message);
+            }
+        }
+
+        // Method to delete a specific SMS
+        static void DeleteSpecificSms(SerialAudioPhone phone)
+        {
+            try
+            {
+                Console.Write("Enter the index of the SMS to delete: ");
+                if (int.TryParse(Console.ReadLine(), out int messageIndex))
+                {
+                    phone.DeleteSms(messageIndex);
+                }
+                else
+                {
+                    Console.WriteLine("Invalid index.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting SMS: {ex.Message}");
+            }
+        }
+
+        // Method to delete all SMS messages
+        static void DeleteAllSmsMessages(SerialAudioPhone phone)
+        {
+            try
+            {
+                phone.DeleteAllSms();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting all SMS messages: {ex.Message}");
+            }
+        }
     }
 }
-

@@ -36,6 +36,8 @@ namespace CellDialer
         private WaveOutEvent? waveOut; // Handles playing audio output, initialized later
         private BufferedWaveProvider? buffer; // Buffers the captured audio data, initialized later
         private bool isCallActive; // Flag to track if the call is active
+        private Thread? smsMonitoringThread; // Thread for monitoring incoming SMS
+        private bool isSmsMonitoringActive; // Flag to control SMS monitoring
 
         // Device identifiers for the AT port and the Audio port
         private const string AtPortDeviceId = "USB\\VID_1E0E&PID_9001&MI_02";
@@ -350,7 +352,7 @@ namespace CellDialer
                 SendCommand("AT+CPCMREG=0,1"); // Disable the audio channel on the modem
                 waveIn?.StopRecording(); // Stop capturing audio from the input device
                 waveOut?.Stop(); // Stop playing audio to the output device
-                if (atPort?.IsOpen == true) atPort.Close(); // Close the AT command serial port
+                //if (atPort?.IsOpen == true) atPort.Close(); // Close the AT command serial port
                 if (audioPort?.IsOpen == true) audioPort.Close(); // Close the audio serial port
                 Console.WriteLine("Call ended.");
             }
@@ -373,6 +375,171 @@ namespace CellDialer
 
             // Validate the phone number against the pattern
             return Regex.IsMatch(phoneNumber, pattern);
+        }
+
+        // Method to send a text message
+        public void SendTextMessage(string phoneNumber, string message)
+        {
+            try
+            {
+                if (atPort?.IsOpen == false)
+                {
+                    atPort.Open(); // Open the port if not already open
+                }
+
+                // Set the SMS mode to Text Mode
+                SendCommand("AT+CMGF=1");
+
+                // Specify the recipient phone number
+                SendCommand($"AT+CMGS=\"{phoneNumber}\"");
+
+                // Send the message text followed by the Ctrl+Z character to send the message
+                atPort?.Write($"{message}{char.ConvertFromUtf32(26)}");
+                Console.WriteLine($"Message sent to {phoneNumber}: {message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending text message: {ex.Message}");
+            }
+        }
+
+        // Method to read and display incoming text messages
+        public void ReadTextMessages()
+        {
+            try
+            {
+                if (atPort?.IsOpen == false)
+                {
+                    atPort.Open(); // Open the port if not already open
+                }
+
+                // Set the SMS mode to Text Mode
+                SendCommand("AT+CMGF=1");
+
+                // Read all messages from the storage
+                SendCommand("AT+CMGL=\"ALL\"");
+
+                // Read and display the incoming messages
+                if (atPort != null && atPort.BytesToRead > 0)
+                {
+                    string response = atPort.ReadExisting();
+                    Console.WriteLine("Received Messages:");
+                    Console.WriteLine(response);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error reading text messages: {ex.Message}");
+            }
+        }
+
+        // Method to start monitoring for incoming SMS messages
+        public void StartSmsMonitoring()
+        {
+            if (atPort?.IsOpen == false)
+            {
+                atPort.Open(); // Ensure the AT port is open
+            }
+
+            isSmsMonitoringActive = true;
+            smsMonitoringThread = new Thread(MonitorIncomingSms)
+            {
+                IsBackground = true
+            };
+            smsMonitoringThread.Start();
+        }
+
+        // Method to stop SMS monitoring
+        public void StopSmsMonitoring()
+        {
+            isSmsMonitoringActive = false;
+            smsMonitoringThread?.Join(); // Wait for the thread to finish
+        }
+
+        // Method to monitor for incoming SMS messages
+        private void MonitorIncomingSms()
+        {
+            try
+            {
+                // Enable new message notifications
+                SendCommand("AT+CNMI=2,1,0,0,0");
+
+                while (isSmsMonitoringActive)
+                {
+                    if (atPort != null && atPort.BytesToRead > 0)
+                    {
+                        string response = atPort.ReadExisting();
+
+                        // Check for SMS notifications
+                        if (response.Contains("+CMTI:"))
+                        {
+                            // Extract the message index from the notification
+                            var match = Regex.Match(response, @"\+CMTI: "".*?"",(\d+)");
+                            if (match.Success)
+                            {
+                                int messageIndex = int.Parse(match.Groups[1].Value);
+
+                                // Read the message content
+                                SendCommand($"AT+CMGR={messageIndex}");
+                                string messageContent = atPort.ReadExisting();
+
+                                // Display the incoming message
+                                Console.WriteLine("New SMS Received:");
+                                Console.WriteLine(messageContent);
+
+                                // Optional: Delete the message after reading
+                                SendCommand($"AT+CMGD={messageIndex}");
+                            }
+                        }
+                    }
+
+                    Thread.Sleep(500); // Sleep to reduce CPU usage
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error monitoring SMS: {ex.Message}");
+            }
+        }
+
+        // Method to delete a specific SMS message by index
+        public void DeleteSms(int messageIndex)
+        {
+            try
+            {
+                if (atPort?.IsOpen == false)
+                {
+                    atPort.Open(); // Ensure the AT port is open
+                }
+
+                // Send the AT command to delete the message at the specified index
+                SendCommand($"AT+CMGD={messageIndex}");
+                Console.WriteLine($"Deleted message at index {messageIndex}.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting SMS message: {ex.Message}");
+            }
+        }
+
+        // Method to delete all SMS messages
+        public void DeleteAllSms()
+        {
+            try
+            {
+                if (atPort?.IsOpen == false)
+                {
+                    atPort.Open(); // Ensure the AT port is open
+                }
+
+                // Send the AT command to delete all messages (index 1 to 4, which includes all typical storage slots)
+                SendCommand("AT+CMGDA=\"DEL ALL\"");
+                Console.WriteLine("Deleted all SMS messages.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting all SMS messages: {ex.Message}");
+            }
         }
     }
 }
