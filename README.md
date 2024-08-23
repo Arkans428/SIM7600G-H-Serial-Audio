@@ -14,7 +14,7 @@ The code in this project is split into three main classes. Two are meant for tes
 
 - **Audio Device Management**: Easily list and select audio devices for further processing.
 - **Real-Time Audio Loopback**: Test audio input and output devices using real-time streaming with adjustable sample rate and channels.
-- **SIMCOM SIM7600G-H Modem Integration**: Send AT commands over the AT Command Port and transmit/receive audio data over the serial audio port. The program can now send DTMF tones during an active call, including the standard tones (0-9, *, #) and extended tones (A-D).
+- **SIMCOM SIM7600G-H Modem Integration**: Send AT commands over the AT Command Port and transmit/receive audio data over the serial audio port. The program can send DTMF tones during an active call, including the standard tones (0-9, *, #) and extended tones (A-D). The class also has methods to Send, Read, and Delete SMS messages.
 
 ## Hardware Requirements
 
