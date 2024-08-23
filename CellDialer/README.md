@@ -30,10 +30,13 @@ The modem will reboot automatically after receiving the command, and you should 
 
 ## Software Requirements
 
-- **NAudio Library**: This project uses the NAudio library for handling audio device management and streaming in C#. You can install it via NuGet:
+- **NAudio Library**: This project uses the NAudio library for handling audio device management and streaming in C#, however you only need two specific packages from that entire set. You can install them via NuGet:
   ```bash
-  dotnet add package NAudio
+  dotnet add package NAudio.WinMM 
+  dotnet add package NAudio.Wasapi
   ```
+NOTE: The NAudio.WinMM package will automatically install NAudio.Core as a prerequisite. You do not need to install it separately.
+
 - **System.IO.Ports Library**: You'll also need to import the System.IO.Ports library to avoid an invalid reference error to the .NET Framework version of this library with the same name.
   ```bash
   dotnet add package System.IO.Ports
@@ -94,7 +97,8 @@ phone.StartCall("17805555555");
    ```
 2. Install dependencies:
    ```bash
-   dotnet add package NAudio
+   dotnet add package NAudio.WinMM
+   dotnet add package NAudio.Wasapi
    dotnet add package System.IO.Ports
    dotnet add package System.Management
    ```
