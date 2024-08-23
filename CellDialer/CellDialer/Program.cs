@@ -15,14 +15,15 @@ namespace CellDialer
             }
             catch (Exception ex)
             {
-                // If initialization fails, display the error and wait for keypress before exiting
+                // If initialization fails, display the error and wait for a keypress before exiting
                 Console.WriteLine("Failed to initialize SerialAudioPhone:");
                 Console.WriteLine(ex.Message);
                 Console.WriteLine("Press any key to close the program...");
                 Console.ReadKey();
                 return; // Exit the program since initialization failed
             }
-            // Start SMS monitoring
+
+            // Start SMS monitoring as soon as the program starts
             phone.StartSmsMonitoring();
 
             try
@@ -44,6 +45,7 @@ namespace CellDialer
                     // Read user input
                     string? choice = Console.ReadLine();
 
+                    // Process user choice
                     switch (choice)
                     {
                         case "1":
@@ -68,7 +70,7 @@ namespace CellDialer
                             DeleteAllSmsMessages(phone);
                             break;
                         case "8":
-                            // Stop SMS monitoring before exiting
+                            // Properly dispose of resources before exiting
                             phone.Dispose();
                             Console.WriteLine("Exiting...");
                             return;
@@ -80,6 +82,7 @@ namespace CellDialer
             }
             catch (Exception ex)
             {
+                // Handle any unexpected errors during the program execution
                 Console.WriteLine("An error occurred: " + ex.Message);
             }
         }
@@ -220,6 +223,7 @@ namespace CellDialer
         {
             try
             {
+                // Prompt the user to enter the index of the SMS to delete
                 Console.Write("Enter the index of the SMS to delete: ");
                 if (int.TryParse(Console.ReadLine(), out int messageIndex))
                 {
@@ -232,6 +236,7 @@ namespace CellDialer
             }
             catch (Exception ex)
             {
+                // Handle errors that may occur when deleting the SMS
                 Console.WriteLine($"Error deleting SMS: {ex.Message}");
             }
         }
@@ -241,10 +246,21 @@ namespace CellDialer
         {
             try
             {
-                phone.DeleteAllSms();
+                // Confirm deletion with the user
+                Console.Write("Are you sure you want to delete all SMS messages? (y/n): ");
+                string? confirmation = Console.ReadLine();
+                if (confirmation?.ToLower() == "y")
+                {
+                    phone.DeleteAllSms();
+                }
+                else
+                {
+                    Console.WriteLine("Deletion canceled.");
+                }
             }
             catch (Exception ex)
             {
+                // Handle errors that may occur when deleting all SMS messages
                 Console.WriteLine($"Error deleting all SMS messages: {ex.Message}");
             }
         }
