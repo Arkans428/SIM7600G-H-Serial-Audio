@@ -151,7 +151,7 @@ namespace CellDialer
                 var phone = new SerialAudioPhone();
                 phone.StartCall(phoneNumber); // Start the call with the provided phone number
 
-                Console.WriteLine("Call started. Press 'Esc' to end the call.");
+                // Console.WriteLine("Call started. Press 'Esc' to end the call.");
             }
             catch (Exception ex)
             {
@@ -161,3 +161,4 @@ namespace CellDialer
         }
     }
 }
+

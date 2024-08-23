@@ -181,7 +181,7 @@ namespace CellDialer
                 waveIn?.StartRecording();
                 waveOut?.Play();
 
-                // Start a thread to monitor keyboard input for ending the call and playing DTMF tones
+                // Start a thread to monitor keyboard input for ending the call
                 Thread inputThread = new Thread(MonitorKeyboardInput)
                 {
                     Priority = ThreadPriority.Highest // Set thread priority to highest to reduce latency
@@ -250,7 +250,7 @@ namespace CellDialer
             }
         }
 
-        // Method to send a DTMF tone during the call. Note: sending the # and * tones is not currently working.
+        // Method to send a DTMF tone during the call
         public void SendDtmfTone(char tone)
         {
             // Validate that the tone is a valid DTMF character (0-9, *, #, A-D)
@@ -361,7 +361,6 @@ namespace CellDialer
         }
 
         // Validate a phone number according to the North American Numbering Plan (NANP)
-        
         private bool IsValidPhoneNumber(string? phoneNumber)
         {
             if (string.IsNullOrWhiteSpace(phoneNumber))
@@ -370,7 +369,6 @@ namespace CellDialer
             }
 
             // Regular expression pattern for validating 10- or 11-digit NANP numbers
-            // If you're coding this in a country outside of north america, you can comment out this line and change the return to 'true' 
             string pattern = @"^(1?)([2-9][0-9]{2})([2-9][0-9]{2})([0-9]{4})$";
 
             // Validate the phone number against the pattern
@@ -378,3 +376,4 @@ namespace CellDialer
         }
     }
 }
+
