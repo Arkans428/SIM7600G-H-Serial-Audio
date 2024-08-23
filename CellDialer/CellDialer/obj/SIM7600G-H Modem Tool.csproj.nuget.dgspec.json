@@ -50,7 +50,11 @@
         "net8.0-windows10.0.26100": {
           "targetAlias": "net8.0-windows10.0.26100.0",
           "dependencies": {
-            "NAudio": {
+            "NAudio.Wasapi": {
+              "target": "Package",
+              "version": "[2.2.1, )"
+            },
+            "NAudio.WinMM": {
               "target": "Package",
               "version": "[2.2.1, )"
             },
