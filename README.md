@@ -1,4 +1,4 @@
-# SIMCOM SIM7600G-H Modem Tool
+# SIM7600G-H Modem Tool
 
 This project contains C# classes designed to manage audio streaming and serial communication with the SIMCOM SIM7600G-H modem. The modem is typically used in embedded systems or IoT devices for telecommunication and remote access.
 
