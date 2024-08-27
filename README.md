@@ -4,17 +4,20 @@ This project contains C# classes designed to manage audio streaming and serial c
 
 ## Overview
 
-The code in this project is split into three main classes. Two are meant for testing, and the third contains the working code for this project:
+The code in this project is split into three classes. Two are meant for testing, and the third contains the working code for this project:
 
 1. **`AudioDeviceManager`**: Lists available audio devices and their input/output channel capabilities.
 2. **`AudioStreamer`**: Captures audio input and plays it back through an output device in real-time (loopback).
-3. **`SerialAudioPhone`**: Manages serial communication with the SIMCOM SIM7600G-H modem, handling AT commands and audio streaming for phone calls. It now also includes the ability to send DTMF tones during a call.
+3. **`SerialAudioPhone`**: Manages serial communication with the SIMCOM SIM7600G-H modem, handling AT commands and audio streaming for phone calls. It now also includes the ability to send DTMF tones during a call and platform-specific support for both Windows and Linux.
 
 ## Key Features
 
 - **Audio Device Management**: Easily list and select audio devices for further processing.
 - **Real-Time Audio Loopback**: Test audio input and output devices using real-time streaming with adjustable sample rate and channels.
-- **SIMCOM SIM7600G-H Modem Integration**: Send AT commands over the AT Command Port and transmit/receive audio data over the serial audio port. The program can send DTMF tones during an active call, including the standard tones (0-9, *, #) and extended tones (A-D). The class also has methods to Send, Read, and Delete SMS messages.
+- **SIMCOM SIM7600G-H Modem Integration**: Send AT commands over the AT Command Port and transmit/receive audio data over the serial audio port. The program can send DTMF tones during an active call, including the standard tones (0-9, *, #) and extended tones (A-D). The class also has methods to send, read, and delete SMS messages.
+- **Platform-Specific Support**: The code now dynamically handles platform differences:
+  - **Windows**: Uses NAudio for audio capture and playback.
+  - **Linux**: Uses Alsa.Net for audio handling, allowing the code to work seamlessly on Raspberry Pi and other Linux systems.
 
 ## Hardware Requirements
 
@@ -30,18 +33,24 @@ The modem will reboot automatically after receiving the command, and you should 
 
 ## Software Requirements
 
-- **NAudio Library**: This project uses the NAudio library for handling audio device management and streaming in C#, however you only need two specific packages from that entire set. You can install them via NuGet:
+- **NAudio Library (for Windows)**: This project uses the NAudio library for handling audio device management and streaming in C#. You can install the necessary packages via NuGet:
   ```bash
   dotnet add package NAudio.WinMM 
   dotnet add package NAudio.Wasapi
   ```
-NOTE: The NAudio.WinMM package will automatically install NAudio.Core as a prerequisite. You do not need to install it separately.
+  NOTE: The NAudio.WinMM package will automatically install NAudio.Core as a prerequisite. You do not need to install it separately.
+
+- **Alsa.Net Library (for Linux)**: The project uses Alsa.Net for audio handling on Linux systems. Install the package via NuGet:
+  ```bash
+  dotnet add package Alsa.Net
+  ```
+  NOTE: You will need to install the libasound2-dev package on the target linux system you are going to use.
 
 - **System.IO.Ports Library**: You'll also need to import the System.IO.Ports library to avoid an invalid reference error to the .NET Framework version of this library with the same name.
   ```bash
   dotnet add package System.IO.Ports
   ```
-- **System.Management Library**: You'll also need to import the System.Management library so the program can search for the COM ports using the device ID of the modem.
+- **System.Management Library (for Windows)**: You'll also need to import the System.Management library so the program can search for the COM ports using the device ID of the modem.
   ```bash
   dotnet add package System.Management
   ```
@@ -78,6 +87,14 @@ streamer.Stop();
 
 The `SerialAudioPhone` class is designed specifically for working with the SIMCOM SIM7600G-H modem. It handles sending AT commands, initiating calls, and streaming audio through the modem’s serial audio port. The call continues until the user presses the "Esc" key or the call ends due to a "NO CARRIER" response from the modem.
 
+#### Key Features:
+- **Platform-Specific Audio Handling**: Automatically handles audio differently for Windows and Linux:
+  - On Windows: Uses NAudio for audio input/output.
+  - On Linux: Uses Alsa.Net for audio input/output.
+- **Improved DTMF Tone Support**: The program now properly detects and sends all DTMF tones (including `*` and `#`) regardless of whether they are entered using Shift + 8/3 or the number pad.
+- **SMS Management**: Send, read, and delete SMS messages using the modem’s serial port.
+- **Automatic Port Detection**: The program automatically finds the correct serial ports for AT commands and audio, whether running on Windows or Linux.
+
 #### Usage Example:
 ```csharp
 var phone = new SerialAudioPhone();
@@ -99,6 +116,7 @@ phone.StartCall("17805555555");
    ```bash
    dotnet add package NAudio.WinMM
    dotnet add package NAudio.Wasapi
+   dotnet add package Alsa.Net
    dotnet add package System.IO.Ports
    dotnet add package System.Management
    ```
@@ -112,7 +130,7 @@ phone.StartCall("17805555555");
 
 ## Compatibility
 
-- The project is compatible with the SIMCOM SIM7600G-H modem and any Windows PC with .NET Core (or later versions) installed.
+- The project is compatible with the SIMCOM SIM7600G-H modem and runs on both Windows and Linux systems with .NET Core (or later versions) installed.
 
 ## Contributing
 
