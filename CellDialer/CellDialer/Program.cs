@@ -7,7 +7,7 @@ namespace ModemTool
         static void Main(string[] args)
         {
             SerialAudioPhone phone;
-
+            
             try
             {
                 // Attempt to initialize SerialAudioPhone
@@ -25,16 +25,16 @@ namespace ModemTool
 
             // Start SMS monitoring as soon as the program starts
             phone.StartSmsMonitoring();
-
+            
             try
             {
                 while (true)
                 {
                     // Display menu options to the user
                     Console.WriteLine("======SIM7600G-H Modem Tool======");
-                    Console.WriteLine("Choose an option:");
+                    Console.WriteLine("Choose an option:");                    
                     Console.WriteLine("1. List System Audio Devices");
-                    Console.WriteLine("2. Test Audio Streaming (Loopback)");
+                    Console.WriteLine("2. Test Audio Streaming (Loopback)");                    
                     Console.WriteLine("3. Serial Audio Phone Call");
                     Console.WriteLine("4. Send Text Message");
                     Console.WriteLine("5. Read Text Messages");

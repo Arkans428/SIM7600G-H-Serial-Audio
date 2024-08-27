@@ -26,35 +26,58 @@ using System;
 using System.IO.Ports;
 using System.Management;
 using System.Text.RegularExpressions;
+
+#if WINDOWS
 using NAudio.Wave;
+#elif LINUX
+using Alsa.Net;
+using Alsa.Net.Audio;
+#endif
 
 namespace ModemTool
 {
     public class SerialAudioPhone : IDisposable
     {
-        private SerialPort? atPort; // Serial port for sending AT commands, initialized later
-        private SerialPort? audioPort; // Serial port for transmitting audio data, initialized later
-        private WaveInEvent? waveIn; // Handles capturing audio input, initialized later
-        private WaveOutEvent? waveOut; // Handles playing audio output, initialized later
-        private BufferedWaveProvider? buffer; // Buffers the captured audio data, initialized later
-        private bool isCallActive; // Flag to track if the call is active
-        private Thread? smsMonitoringThread; // Thread for monitoring incoming SMS
-        private bool isSmsMonitoringActive; // Flag to control SMS monitoring
+        #region Fields and Configuration
+
+        // Serial ports for AT commands and audio data
+        private SerialPort? atPort; // Serial port for sending AT commands
+        private SerialPort? audioPort; // Serial port for transmitting audio data
+
+#if WINDOWS
+        private WaveInEvent? waveIn; // Handles capturing audio input (Windows)
+        private WaveOutEvent? waveOut; // Handles playing audio output (Windows)
+        private BufferedWaveProvider? buffer; // Buffers the captured audio data (Windows)
+#elif LINUX
+        private AudioCapture? waveIn; // Handles capturing audio input (Linux)
+        private AudioPlayback? waveOut; // Handles playing audio output (Linux)
+        private RingBuffer? buffer; // Buffers the captured audio data (Linux)
+#endif
+
+        private Thread? smsMonitoringThread; // Background thread for monitoring incoming SMS messages
+        private bool isCallActive; // Flag indicating whether a call is currently active
+        private bool isSmsMonitoringActive; // Flag indicating whether SMS monitoring is active
         private bool disposed = false; // Tracks whether the object has been disposed
-        private bool isEchoSuppressionEnabled = true; // Flag for enabling/disabling echo suppression
+        private bool isEchoSuppressionEnabled = true; // Flag to enable/disable echo suppression
+        private float echoSuppressionFactor = 0.5f; // Echo suppression level (range 0 to 1)
+        private bool verboseOutput = false; // Flag to control verbose logging for debugging
 
-        // Echo suppression level (range 0 to 1)
-        private float echoSuppressionFactor = 0.5f;
+        // Device identifiers for the AT port and the Audio port on different platforms
+        private const string WindowsAtPortDeviceId = "USB\\VID_1E0E&PID_9001&MI_02";
+        private const string WindowsAudioPortDeviceId = "USB\\VID_1E0E&PID_9001&MI_04";
+        private const string LinuxVendorId = "1e0e";
+        private const string LinuxProductId = "9001";
 
-        // Device identifiers for the AT port and the Audio port
-        private const string AtPortDeviceId = "USB\\VID_1E0E&PID_9001&MI_02";
-        private const string AudioPortDeviceId = "USB\\VID_1E0E&PID_9001&MI_04";
+        #endregion
 
-        public SerialAudioPhone(int baudRate = 115200, int sampleRate = 8000, int channels = 1)
+        #region Constructor
+        public SerialAudioPhone(int baudRate = 115200, int sampleRate = 8000, int channels = 1, bool verbose = false)
         {
+            // Enable verbose output if requested
+            verboseOutput = verbose;
+
             // Locate the serial ports based on their device IDs
-            string? atPortName = FindSerialPortByDeviceId(AtPortDeviceId);
-            string? audioPortName = FindSerialPortByDeviceId(AudioPortDeviceId);
+            var (atPortName, audioPortName) = FindSerialPorts();
 
             // If either port is not found, throw an exception
             if (atPortName is null || audioPortName is null)
@@ -62,179 +85,314 @@ namespace ModemTool
                 throw new InvalidOperationException("Unable to locate one or both required serial ports.");
             }
 
-            // Initialize the serial ports with the located COM port names
+            // Initialize the serial ports using the detected port names
             atPort = new SerialPort(atPortName, baudRate);
             audioPort = new SerialPort(audioPortName, baudRate);
 
-            // Configure the input device for capturing audio
+#if WINDOWS
+            // Configure the input device for capturing audio (microphone) on Windows
             waveIn = new WaveInEvent
             {
-                WaveFormat = new WaveFormat(sampleRate, channels), // Use standard telephony sample rate of 8000 Hz
-                BufferMilliseconds = 30 // Buffer size to balance between performance and stability
+                WaveFormat = new WaveFormat(sampleRate, channels),
+                BufferMilliseconds = 30
             };
 
-            // Configure the output device for playing audio
+            // Configure the output device for playing audio (speakers) on Windows
             waveOut = new WaveOutEvent
             {
-                DesiredLatency = 50, // Slight latency for smoother playback
-                NumberOfBuffers = 4 // Balance between buffering and real-time performance
+                DesiredLatency = 50,
+                NumberOfBuffers = 4
             };
 
+            // Initialize the buffer for storing audio data (Windows)
             buffer = new BufferedWaveProvider(waveIn.WaveFormat)
             {
-                BufferLength = 4096, // Adjusted buffer size to reduce delays
-                DiscardOnBufferOverflow = true // Prevents buffer overflow by discarding old data
+                BufferLength = 4096,
+                DiscardOnBufferOverflow = true
             };
 
-            waveOut.Volume = 0.7f; // Slightly increase the volume for better clarity
+            waveOut.Volume = 0.7f;
 
-            // Attach the DataAvailable event handler for capturing and processing audio data
+            // Attach event handler for capturing and processing audio data on Windows
             waveIn.DataAvailable += (sender, e) =>
             {
                 try
                 {
-                    // Adaptive echo suppression: lower the outgoing audio volume if audio is playing
-                    float adjustedVolume = waveOut.PlaybackState == PlaybackState.Playing
-                        ? echoSuppressionFactor
-                        : 1.0f;
-
-                    // Adjust the audio buffer volume based on the suppression factor
+                    float adjustedVolume = waveOut.PlaybackState == PlaybackState.Playing ? echoSuppressionFactor : 1.0f;
                     byte[] adjustedBuffer = AdjustAudioVolume(e.Buffer, e.BytesRecorded, adjustedVolume);
-                    audioPort.Write(adjustedBuffer, 0, e.BytesRecorded); // Send the adjusted audio data to the modem
-                }
-                catch (IOException ex)
-                {
-                    Console.WriteLine("I/O Error while writing audio data: " + ex.Message);
-                }
-                catch (UnauthorizedAccessException ex)
-                {
-                    Console.WriteLine("Access Error while writing audio data: " + ex.Message);
+                    audioPort.Write(adjustedBuffer, 0, e.BytesRecorded);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Unexpected Error while writing audio data: " + ex.Message);
+                    Console.WriteLine("Audio error: " + ex.Message);
                 }
             };
 
-            waveOut.Init(buffer); // Initialize the output device with the buffered audio data
+            waveOut.Init(buffer);
 
-            isCallActive = false; // Set the call as inactive initially
+#elif LINUX
+            // Configure audio input and output for Linux using Alsa.Net
+            waveIn = new AudioCapture(new AudioDevice(), sampleRate, channels);
+            waveOut = new AudioPlayback(new AudioDevice(), sampleRate, channels);
+
+            buffer = new RingBuffer(4096); // Adjust buffer size as needed
+
+            waveIn.DataAvailable += (sender, e) =>
+            {
+                try
+                {
+                    float adjustedVolume = waveOut.Playing ? echoSuppressionFactor : 1.0f;
+                    byte[] adjustedBuffer = AdjustAudioVolume(e.Buffer, e.BytesRecorded, adjustedVolume);
+                    audioPort.Write(adjustedBuffer, 0, e.BytesRecorded);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Audio error: " + ex.Message);
+                }
+            };
+#endif
+
+            isCallActive = false;
         }
 
-        // Method to find the correct serial port based on the device identifier
-        private string? FindSerialPortByDeviceId(string deviceId)
+        #endregion
+
+        #region Platform-Specific Methods for Serial Port Detection
+
+        // Detect and return serial ports for the AT and Audio ports based on the operating system
+        private (string? AtPort, string? AudioPort) FindSerialPorts()
         {
+            if (IsWindows())
+            {
+                return FindPortsWindows();
+            }
+            else if (IsLinux())
+            {
+                return FindPortsLinux();
+            }
+            else
+            {
+                Console.WriteLine("Unsupported operating system.");
+                return (null, null);
+            }
+        }
+
+        // Check if the current platform is Windows
+        private bool IsWindows() => Environment.OSVersion.Platform == PlatformID.Win32NT;
+
+        // Check if the current platform is Linux or macOS
+        private bool IsLinux() => Environment.OSVersion.Platform == PlatformID.Unix || Environment.OSVersion.Platform == PlatformID.MacOSX;
+
+        // Find the appropriate serial ports for Windows systems
+        private (string? AtPort, string? AudioPort) FindPortsWindows()
+        {
+            string? atPort = null;
+            string? audioPort = null;
+
             try
             {
-#pragma warning disable CS8602, CA1416 // Dereference of possibly null reference. We know this isn't going to happen, but the compiler seems to think otherwise...
+                // Query the system for USB devices using WMI (Windows Management Instrumentation)
                 using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity"))
                 {
                     foreach (var device in searcher.Get())
                     {
-                        string? deviceID = device["DeviceID"]?.ToString();
-                        if (deviceID != null && deviceID.Contains(deviceId))
+                        string? deviceId = device["DeviceID"]?.ToString();
+                        string? name = device["Name"]?.ToString();
+                        if (deviceId != null && name != null)
                         {
-                            // Extract and return the port name
-                            string? portName = device["Name"]?.ToString().Split('(').LastOrDefault()?.Replace(")", "");
-                            return portName;
+                            if (deviceId.Contains(WindowsAtPortDeviceId))
+                            {
+                                atPort = name.Split('(').LastOrDefault()?.Replace(")", ""); // Extract COM port name for AT port
+                            }
+                            else if (deviceId.Contains(WindowsAudioPortDeviceId))
+                            {
+                                audioPort = name.Split('(').LastOrDefault()?.Replace(")", ""); // Extract COM port name for Audio port
+                            }
                         }
                     }
                 }
-#pragma warning restore CS8602, CA1416 // Re-enable warnings
-            }
-            catch (ManagementException ex)
-            {
-                Console.WriteLine("Management Error while searching for device: " + ex.Message);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Unexpected Error while searching for device: " + ex.Message);
+                Console.WriteLine($"Error detecting ports on Windows: {ex.Message}");
             }
-            return null; // Return null if the device is not found or if an error occurs
+
+            return (atPort, audioPort);
         }
 
-        // Start the phone call
+        // Find the appropriate serial ports for Linux systems
+        private (string? AtPort, string? AudioPort) FindPortsLinux()
+        {
+            string? atPort = null;
+            string? audioPort = null;
+
+            try
+            {
+                // List all top-level USB device folders (those without a colon in their name)
+                var devices = System.IO.Directory.GetDirectories("/sys/bus/usb/devices/")
+                    .Where(d => !d.Contains(":")); // Filter out subfolders like ":1.2", ":1.4"
+
+                foreach (var device in devices)
+                {
+                    // Check for matching vendor and product IDs
+                    if (System.IO.File.Exists($"{device}/idVendor") && System.IO.File.Exists($"{device}/idProduct"))
+                    {
+                        string vendorId = System.IO.File.ReadAllText($"{device}/idVendor").Trim();
+                        string productId = System.IO.File.ReadAllText($"{device}/idProduct").Trim();
+
+                        if (vendorId == LinuxVendorId && productId == LinuxProductId)
+                        {
+                            // Look for the specific child folders ending in ":1.2" and ":1.4"
+                            var interfaceFolders = System.IO.Directory.GetDirectories(device)
+                                .Where(f => f.EndsWith(":1.2") || f.EndsWith(":1.4"));
+
+                            foreach (var interfaceFolder in interfaceFolders)
+                            {
+                                // Look for a ttyUSB* device name in the folder
+                                var ttyDevice = System.IO.Directory.GetDirectories(interfaceFolder, "ttyUSB*").FirstOrDefault();
+                                if (ttyDevice != null)
+                                {
+                                    // Extract the ttyUSB* name (e.g., ttyUSB2, ttyUSB4)
+                                    string ttyName = System.IO.Path.GetFileName(ttyDevice);
+
+                                    // Check if this device exists in the /dev/ folder
+                                    string devPath = $"/dev/{ttyName}";
+                                    if (System.IO.File.Exists(devPath))
+                                    {
+                                        // Determine if this is the AT port or Audio port based on the folder name
+                                        if (interfaceFolder.EndsWith(":1.2"))
+                                        {
+                                            atPort = devPath;
+                                        }
+                                        else if (interfaceFolder.EndsWith(":1.4"))
+                                        {
+                                            audioPort = devPath;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error detecting ports on Linux: {ex.Message}");
+            }
+
+            return (atPort, audioPort);
+        }
+
+        #endregion
+
+        #region Core Call Management Methods
+
+        // Start a phone call to a specified phone number
         public void StartCall(string phoneNumber)
         {
             try
             {
-                // Validate the phone number using NANP (North American Numbering Plan)
+                // Validate the phone number using a custom validation function
                 if (!IsValidPhoneNumber(phoneNumber))
                 {
-                    Console.WriteLine("Invalid phone number. Please enter a 10- or 11-digit phone number.");
-                    return; // Exit the method if the input is invalid
+                    Console.WriteLine("Invalid phone number.");
+                    return;
                 }
 
-                isCallActive = true;
+                isCallActive = true; // Set the call as active
 
+                // Open the AT command port if it's not already open
                 if (atPort?.IsOpen == false)
                 {
-                    atPort.Open(); // Open the AT command serial port if not already open
+                    atPort.Open();
                 }
 
+                // Open the audio port if it's not already open
                 if (audioPort?.IsOpen == false)
                 {
-                    audioPort.Open(); // Open the audio serial port if not already open
+                    audioPort.Open();
                 }
+
+                // Clear any leftover data in the serial buffers before starting the call
+                atPort?.DiscardInBuffer();
+                atPort?.DiscardOutBuffer();
+                audioPort?.DiscardInBuffer();
+                audioPort?.DiscardOutBuffer();
 
                 Thread.Sleep(300); // Short delay to ensure the ports are fully initialized
 
-                // Resend critical audio commands to ensure proper setup
-                SendCommand("AT+CGREG=0"); // Disable AGC for more consistent volume
+                // Send necessary AT commands to configure the call settings
+                SendCommand("AT+CGREG=0"); // Disable automatic gain control
                 SendCommand("AT+CECM=7");
                 SendCommand("AT+CECWB=0x0800");
-                SendCommand("AT+CMICGAIN=3"); // Moderate microphone gain
-                SendCommand("AT+COUTGAIN=4"); // Moderate output gain
+                SendCommand("AT+CMICGAIN=3"); // Set microphone gain
+                SendCommand("AT+COUTGAIN=4"); // Set output gain
                 SendCommand("AT+CNSN=0x1000");
 
-                // Send initial AT commands to set up the call
-                SendCommand("AT"); // Basic command to check if the modem is ready
+                // Send basic AT command to ensure modem readiness and dial the phone number
+                SendCommand("AT");
                 SendCommand($"ATD{phoneNumber};"); // Dial the phone number
 
-                // Critical AT command to enable audio over the serial port
+                // Enable audio transmission over the serial port
                 SendCommand("AT+CPCMREG=1");
 
-                waveIn?.StartRecording(); // Start capturing audio
+#if WINDOWS
+                waveIn?.StartRecording(); // Start capturing audio from the microphone
                 waveOut?.Play(); // Start playing received audio
+#elif LINUX
+                waveIn.Start();
+                waveOut.Start();
+#endif
 
-                // Start a thread to monitor keyboard input for ending the call
+                // Start a thread to monitor keyboard input for user interaction
                 Thread inputThread = new Thread(MonitorKeyboardInput)
                 {
-                    Priority = ThreadPriority.Highest // Set thread priority to highest to reduce latency
+                    Priority = ThreadPriority.Highest
                 };
                 inputThread.Start();
 
-                // Main loop to handle call activity
+                // Main loop to manage call activity
                 while (isCallActive)
                 {
                     try
                     {
-                        // Check for responses from the AT command serial port
+                        // Check for responses from the AT command port (e.g., "NO CARRIER" indicating the call ended)
                         if (atPort != null && atPort.BytesToRead > 0)
                         {
                             string response = atPort.ReadExisting();
-                            Console.WriteLine(response);
+                            if (verboseOutput) Console.WriteLine(response);
                             if (response.Contains("NO CARRIER"))
                             {
-                                isCallActive = false; // End the call if "NO CARRIER" is detected
+                                isCallActive = false;
                             }
                         }
 
-                        // Read and play incoming audio data from the audio serial port
+                        // Read and play incoming audio data from the audio port
                         if (audioPort != null && audioPort.BytesToRead > 0)
                         {
                             byte[] audioData = new byte[audioPort.BytesToRead];
                             audioPort.Read(audioData, 0, audioData.Length);
 
-                            // Prevent buffer overflow by checking available space
+                            // Prevent buffer overflow by limiting the amount of buffered audio
+#if WINDOWS
                             if (buffer != null && buffer.BufferedDuration.TotalMilliseconds < 100)
                             {
-                                buffer.AddSamples(audioData, 0, audioData.Length); // Add the received audio data to the playback buffer
+                                buffer.AddSamples(audioData, 0, audioData.Length); // Add received audio to the playback buffer
                             }
                             else
                             {
-                                Console.WriteLine("Skipping audio data to avoid buffer overflow.");
+                                if (verboseOutput) Console.WriteLine("Skipping audio data to avoid buffer overflow.");
                             }
+#elif LINUX
+                            if (buffer != null && buffer.AvailableWrite > audioData.Length)
+                            {
+                                buffer.Write(audioData, 0, audioData.Length); // Add received audio to the playback buffer
+                            }
+                            else
+                            {
+                                if (verboseOutput) Console.WriteLine("Skipping audio data to avoid buffer overflow.");
+                            }
+#endif
                         }
                     }
                     catch (IOException ex)
@@ -253,7 +411,7 @@ namespace ModemTool
                         isCallActive = false;
                     }
 
-                    Thread.Sleep(10); // Short delay to prevent high CPU usage while keeping latency low
+                    Thread.Sleep(10); // Short delay to reduce CPU usage while maintaining low latency
                 }
             }
             catch (Exception ex)
@@ -262,40 +420,30 @@ namespace ModemTool
             }
             finally
             {
-                EndCall(); // Ensure the call is ended cleanly and resources are released
+                EndCall(); // Ensure the call is properly ended and resources are released
             }
         }
 
-        // Adjust the audio buffer volume based on the provided volume factor
-        private byte[] AdjustAudioVolume(byte[] buffer, int length, float volumeFactor)
-        {
-            for (int i = 0; i < length; i += 2)
-            {
-                short sample = BitConverter.ToInt16(buffer, i);
-                sample = (short)(sample * volumeFactor); // Scale the audio sample by the volume factor
-                byte[] adjustedSample = BitConverter.GetBytes(sample);
-                buffer[i] = adjustedSample[0];
-                buffer[i + 1] = adjustedSample[1];
-            }
-            return buffer;
-        }
-
-        // Method to send a DTMF tone during the call
+        // Method to send a DTMF (Dual-Tone Multi-Frequency) tone during a call
         public void SendDtmfTone(char tone)
         {
             // Validate that the tone is a valid DTMF character (0-9, *, #, A-D)
             if ("0123456789*#ABCD".IndexOf(tone) >= 0)
             {
-                SendCommand($"AT+VTS={tone}"); // Send the DTMF tone
-                Console.WriteLine($"Sent DTMF tone: {tone}");
+                // Send the AT command to generate the specified DTMF tone
+                SendCommand($"AT+VTS={tone}");
+
+                // Optionally display the sent tone if verbose output is enabled
+                if (verboseOutput) Console.WriteLine($"Sent DTMF tone: {tone}");
             }
             else
             {
+                // Display an error message if the input tone is not valid
                 Console.WriteLine($"Invalid DTMF tone: {tone}");
             }
         }
 
-        // Monitor keyboard input to end the call or send DTMF tones
+        // Monitor user input for ending the call or sending DTMF tones
         private void MonitorKeyboardInput()
         {
             try
@@ -313,7 +461,7 @@ namespace ModemTool
                         }
                         else
                         {
-                            // Check for DTMF tones (0-9, *, #, A, B, C, D)
+                            // Check if the key corresponds to a valid DTMF tone
                             char dtmfTone = key switch
                             {
                                 ConsoleKey.D1 => '1',
@@ -332,12 +480,12 @@ namespace ModemTool
                                 ConsoleKey.D => 'D',
                                 ConsoleKey.Oem1 => '*',
                                 ConsoleKey.OemPlus => '#',
-                                _ => '\0' // Invalid character, ignored
+                                _ => '\0'
                             };
 
                             if (dtmfTone != '\0')
                             {
-                                SendDtmfTone(dtmfTone);
+                                SendDtmfTone(dtmfTone); // Send the DTMF tone if it's valid
                             }
                         }
                     }
@@ -349,38 +497,23 @@ namespace ModemTool
             }
         }
 
-        // Send an AT command through the serial port
-        private void SendCommand(string command)
-        {
-            try
-            {
-                atPort?.WriteLine($"{command}\r");
-                Thread.Sleep(80); // Reduced delay to speed up command processing
-            }
-            catch (IOException ex)
-            {
-                Console.WriteLine("I/O Error sending AT command: " + ex.Message);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                Console.WriteLine("Access Error sending AT command: " + ex.Message);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Unexpected Error sending AT command: " + ex.Message);
-            }
-        }
-
-        // End the phone call and clean up resources
+        // End the call and release resources
         public void EndCall()
         {
             try
             {
                 SendCommand("AT+CHUP"); // Hang up the call
                 SendCommand("AT+CPCMREG=0,1"); // Disable the audio channel on the modem
-                waveIn?.StopRecording(); // Stop capturing audio from the input device
-                waveOut?.Stop(); // Stop playing audio to the output device
-                Console.WriteLine("Call ended.");
+
+#if WINDOWS
+                waveIn?.StopRecording(); // Stop capturing audio (Windows)
+                waveOut?.Stop(); // Stop playing audio (Windows)
+#elif LINUX
+                waveIn.Stop(); // Stop capturing audio (Linux)
+                waveOut.Stop(); // Stop playing audio (Linux)
+#endif
+
+                if (verboseOutput) Console.WriteLine("Call ended.");
             }
             catch (Exception ex)
             {
@@ -388,40 +521,25 @@ namespace ModemTool
             }
         }
 
-        // Validate a phone number according to the North American Numbering Plan (NANP)
-        private bool IsValidPhoneNumber(string? phoneNumber)
-        {
-            if (string.IsNullOrWhiteSpace(phoneNumber))
-            {
-                return false; // Return false if the phone number is null or whitespace
-            }
+        #endregion
 
-            // Regular expression pattern for validating 10- or 11-digit NANP numbers
-            string pattern = @"^(1?)([2-9][0-9]{2})([2-9][0-9]{2})([0-9]{4})$";
+        #region SMS Management Methods
 
-            // Validate the phone number against the pattern
-            return Regex.IsMatch(phoneNumber, pattern);
-        }
-
-        // Method to send a text message
+        // Send a text message to a specified phone number
         public void SendTextMessage(string phoneNumber, string message)
         {
             try
             {
                 if (atPort?.IsOpen == false)
                 {
-                    atPort.Open(); // Open the port if not already open
+                    atPort.Open(); // Ensure the AT port is open
                 }
 
-                // Set the SMS mode to Text Mode
-                SendCommand("AT+CMGF=1");
+                SendCommand("AT+CMGF=1"); // Set SMS mode to text mode
+                SendCommand($"AT+CMGS=\"{phoneNumber}\""); // Specify the recipient
 
-                // Specify the recipient phone number
-                SendCommand($"AT+CMGS=\"{phoneNumber}\"");
-
-                // Send the message text followed by the Ctrl+Z character to send the message
-                atPort?.Write($"{message}{char.ConvertFromUtf32(26)}");
-                Console.WriteLine($"Message sent to {phoneNumber}: {message}");
+                atPort?.Write($"{message}{char.ConvertFromUtf32(26)}"); // Send the message followed by Ctrl+Z (end of message)
+                if (verboseOutput) Console.WriteLine($"Message sent to {phoneNumber}: {message}");
             }
             catch (Exception ex)
             {
@@ -429,27 +547,23 @@ namespace ModemTool
             }
         }
 
-        // Method to read and display incoming text messages
+        // Read and display all stored SMS messages
         public void ReadTextMessages()
         {
             try
             {
                 if (atPort?.IsOpen == false)
                 {
-                    atPort.Open(); // Open the port if not already open
+                    atPort.Open(); // Ensure the AT port is open
                 }
 
-                // Set the SMS mode to Text Mode
-                SendCommand("AT+CMGF=1");
+                SendCommand("AT+CMGF=1"); // Set SMS mode to text mode
+                SendCommand("AT+CMGL=\"ALL\""); // Retrieve all stored messages
 
-                // Read all messages from the storage
-                SendCommand("AT+CMGL=\"ALL\"");
-
-                // Read and display the incoming messages
                 if (atPort != null && atPort.BytesToRead > 0)
                 {
                     string response = atPort.ReadExisting();
-                    Console.WriteLine("Received Messages:");
+                    if (verboseOutput) Console.WriteLine("Received Messages:");
                     Console.WriteLine(response);
                 }
             }
@@ -459,7 +573,7 @@ namespace ModemTool
             }
         }
 
-        // Method to start monitoring for incoming SMS messages
+        // Start monitoring for incoming SMS messages in the background
         public void StartSmsMonitoring()
         {
             if (atPort?.IsOpen == false)
@@ -475,20 +589,12 @@ namespace ModemTool
             smsMonitoringThread.Start();
         }
 
-        // Method to stop SMS monitoring
-        public void StopSmsMonitoring()
-        {
-            isSmsMonitoringActive = false;
-            smsMonitoringThread?.Join(); // Wait for the thread to finish
-        }
-
-        // Method to monitor for incoming SMS messages
+        // Monitor and handle incoming SMS messages
         private void MonitorIncomingSms()
         {
             try
             {
-                // Enable new message notifications
-                SendCommand("AT+CNMI=2,1,0,0,0");
+                SendCommand("AT+CNMI=2,1,0,0,0"); // Enable new message notifications
 
                 while (isSmsMonitoringActive)
                 {
@@ -509,11 +615,10 @@ namespace ModemTool
                                 SendCommand($"AT+CMGR={messageIndex}");
                                 string messageContent = atPort.ReadExisting();
 
-                                // Display the incoming message
-                                Console.WriteLine("New SMS Received:");
+                                if (verboseOutput) Console.WriteLine("New SMS Received:");
                                 Console.WriteLine(messageContent);
 
-                                // Optional: Delete the message after reading
+                                // Optionally delete the message after reading
                                 SendCommand($"AT+CMGD={messageIndex}");
                             }
                         }
@@ -528,7 +633,14 @@ namespace ModemTool
             }
         }
 
-        // Method to delete a specific SMS message by index
+        // Stop monitoring SMS messages
+        public void StopSmsMonitoring()
+        {
+            isSmsMonitoringActive = false;
+            smsMonitoringThread?.Join(); // Wait for the monitoring thread to finish
+        }
+
+        // Delete a specific SMS message by index
         public void DeleteSms(int messageIndex)
         {
             try
@@ -538,9 +650,8 @@ namespace ModemTool
                     atPort.Open(); // Ensure the AT port is open
                 }
 
-                // Send the AT command to delete the message at the specified index
-                SendCommand($"AT+CMGD={messageIndex}");
-                Console.WriteLine($"Deleted message at index {messageIndex}.");
+                SendCommand($"AT+CMGD={messageIndex}"); // Send the command to delete the message
+                if (verboseOutput) Console.WriteLine($"Deleted message at index {messageIndex}.");
             }
             catch (Exception ex)
             {
@@ -548,7 +659,7 @@ namespace ModemTool
             }
         }
 
-        // Method to delete all SMS messages
+        // Delete all stored SMS messages
         public void DeleteAllSms()
         {
             try
@@ -558,9 +669,8 @@ namespace ModemTool
                     atPort.Open(); // Ensure the AT port is open
                 }
 
-                // Send the AT command to delete all messages (index 1 to 4, which includes all typical storage slots)
-                SendCommand("AT+CMGDA=\"DEL ALL\"");
-                Console.WriteLine("Deleted all SMS messages.");
+                SendCommand("AT+CMGDA=\"DEL ALL\""); // Send the command to delete all messages
+                if (verboseOutput) Console.WriteLine("Deleted all SMS messages.");
             }
             catch (Exception ex)
             {
@@ -568,27 +678,87 @@ namespace ModemTool
             }
         }
 
-        // Dispose method for releasing resources
+        #endregion
+
+        #region Utility Methods
+
+        // Send an AT command through the serial port
+        private void SendCommand(string command)
+        {
+            try
+            {
+                atPort?.WriteLine($"{command}\r"); // Send the command followed by a carriage return
+                Thread.Sleep(60); // Short delay for command processing
+
+                if (verboseOutput) Console.WriteLine($"Sent Command: {command}");
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine("I/O Error sending AT command: " + ex.Message);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Console.WriteLine("Access Error sending AT command: " + ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Unexpected Error sending AT command: " + ex.Message);
+            }
+        }
+
+        // Validate a phone number (simple validation)
+        private bool IsValidPhoneNumber(string? phoneNumber)
+        {
+            if (string.IsNullOrWhiteSpace(phoneNumber))
+            {
+                return false; // Invalid if null or empty
+            }
+
+            return true; // Valid if it passes basic checks
+        }
+
+        // Adjust the volume of an audio buffer by scaling the samples
+        private byte[] AdjustAudioVolume(byte[] buffer, int length, float volumeFactor)
+        {
+            for (int i = 0; i < length; i += 2)
+            {
+                short sample = BitConverter.ToInt16(buffer, i);
+                sample = (short)(sample * volumeFactor); // Scale the audio sample by the volume factor
+                byte[] adjustedSample = BitConverter.GetBytes(sample);
+                buffer[i] = adjustedSample[0];
+                buffer[i + 1] = adjustedSample[1];
+            }
+            return buffer;
+        }
+
+        #endregion
+
+        #region Disposal Methods
+
+        // Dispose pattern implementation to release resources
         public void Dispose()
         {
             Dispose(true);
-            GC.SuppressFinalize(this);
+            GC.SuppressFinalize(this); // Suppress finalization since manual disposal is handled
         }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (disposed) return;
+            if (disposed) return; // If already disposed, exit
 
             if (disposing)
             {
-                // Stop SMS monitoring if active
-                StopSmsMonitoring();
+                StopSmsMonitoring(); // Stop SMS monitoring if active
 
-                // Dispose managed resources
-                waveIn?.Dispose();
-                waveOut?.Dispose();
+#if WINDOWS
+                waveIn?.Dispose(); // Dispose managed resources (Windows)
+                waveOut?.Dispose(); // Dispose managed resources (Windows)
+#elif LINUX
+                waveIn.Dispose(); // Dispose managed resources (Linux)
+                waveOut.Dispose(); // Dispose managed resources (Linux)
+#endif
 
-                // Check if ports are open and close them before disposal
+                // Close and dispose serial ports if they are open
                 if (atPort?.IsOpen == true)
                 {
                     atPort.Close();
@@ -602,12 +772,15 @@ namespace ModemTool
                 audioPort?.Dispose();
             }
 
-            disposed = true;
+            disposed = true; // Mark as disposed
         }
 
         ~SerialAudioPhone()
         {
-            Dispose(false);
+            Dispose(false); // Destructor calls Dispose(false) for unmanaged resource cleanup
         }
+
+        #endregion
     }
 }
+

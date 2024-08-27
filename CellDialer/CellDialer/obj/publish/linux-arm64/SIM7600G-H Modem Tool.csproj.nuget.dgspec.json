@@ -1,0 +1,106 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio-V0.2\\CellDialer\\CellDialer\\SIM7600G-H Modem Tool.csproj": {}
+  },
+  "projects": {
+    "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio-V0.2\\CellDialer\\CellDialer\\SIM7600G-H Modem Tool.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio-V0.2\\CellDialer\\CellDialer\\SIM7600G-H Modem Tool.csproj",
+        "projectName": "SIM7600G-H Modem Tool",
+        "projectPath": "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio-V0.2\\CellDialer\\CellDialer\\SIM7600G-H Modem Tool.csproj",
+        "packagesPath": "C:\\Users\\Kiern\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio-V0.2\\CellDialer\\CellDialer\\obj\\publish\\linux-arm64\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "D:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\Kiern\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Alsa.Net": {
+              "target": "Package",
+              "version": "[1.0.8, )"
+            },
+            "NAudio.Wasapi": {
+              "target": "Package",
+              "version": "[2.2.1, )"
+            },
+            "NAudio.WinMM": {
+              "target": "Package",
+              "version": "[2.2.1, )"
+            },
+            "System.IO.Ports": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "System.Management": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.NETCore.App.Host.linux-arm64",
+              "version": "[8.0.8, 8.0.8]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.400/PortableRuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "linux-arm64": {
+          "#import": []
+        }
+      }
+    }
+  }
+}

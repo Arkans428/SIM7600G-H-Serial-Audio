@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio\\CellDialer\\CellDialer\\SIM7600G-H Modem Tool.csproj": {}
+    "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio-V0.2\\CellDialer\\CellDialer\\SIM7600G-H Modem Tool.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio\\CellDialer\\CellDialer\\SIM7600G-H Modem Tool.csproj": {
+    "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio-V0.2\\CellDialer\\CellDialer\\SIM7600G-H Modem Tool.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio\\CellDialer\\CellDialer\\SIM7600G-H Modem Tool.csproj",
+        "projectUniqueName": "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio-V0.2\\CellDialer\\CellDialer\\SIM7600G-H Modem Tool.csproj",
         "projectName": "SIM7600G-H Modem Tool",
-        "projectPath": "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio\\CellDialer\\CellDialer\\SIM7600G-H Modem Tool.csproj",
+        "projectPath": "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio-V0.2\\CellDialer\\CellDialer\\SIM7600G-H Modem Tool.csproj",
         "packagesPath": "C:\\Users\\Kiern\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio\\CellDialer\\CellDialer\\obj\\",
+        "outputPath": "C:\\Users\\Kiern\\Desktop\\SIM7600G-H-Serial-Audio-V0.2\\CellDialer\\CellDialer\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "D:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -22,7 +22,7 @@
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
-          "net8.0-windows10.0.26100.0"
+          "net8.0"
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
@@ -30,8 +30,8 @@
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
-          "net8.0-windows10.0.26100": {
-            "targetAlias": "net8.0-windows10.0.26100.0",
+          "net8.0": {
+            "targetAlias": "net8.0",
             "projectReferences": {}
           }
         },
@@ -47,9 +47,13 @@
         }
       },
       "frameworks": {
-        "net8.0-windows10.0.26100": {
-          "targetAlias": "net8.0-windows10.0.26100.0",
+        "net8.0": {
+          "targetAlias": "net8.0",
           "dependencies": {
+            "Alsa.Net": {
+              "target": "Package",
+              "version": "[1.0.8, )"
+            },
             "NAudio.Wasapi": {
               "target": "Package",
               "version": "[2.2.1, )"
@@ -78,17 +82,8 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
-          "downloadDependencies": [
-            {
-              "name": "Microsoft.Windows.SDK.NET.Ref",
-              "version": "[10.0.26100.34, 10.0.26100.34]"
-            }
-          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
-              "privateAssets": "all"
-            },
-            "Microsoft.Windows.SDK.NET.Ref": {
               "privateAssets": "all"
             }
           },

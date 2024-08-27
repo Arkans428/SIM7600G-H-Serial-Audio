@@ -1,0 +1,22 @@
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\bin\Release\net8.0\linux-arm64\SIM7600G-H Modem Tool
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\bin\Release\net8.0\linux-arm64\SIM7600G-H Modem Tool.deps.json
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\bin\Release\net8.0\linux-arm64\SIM7600G-H Modem Tool.runtimeconfig.json
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\bin\Release\net8.0\linux-arm64\SIM7600G-H Modem Tool.dll
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\bin\Release\net8.0\linux-arm64\Alsa.Net.dll
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\bin\Release\net8.0\linux-arm64\NAudio.Core.dll
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\bin\Release\net8.0\linux-arm64\NAudio.Wasapi.dll
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\bin\Release\net8.0\linux-arm64\NAudio.WinMM.dll
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\bin\Release\net8.0\linux-arm64\System.CodeDom.dll
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\bin\Release\net8.0\linux-arm64\System.IO.Ports.dll
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\bin\Release\net8.0\linux-arm64\System.Management.dll
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\bin\Release\net8.0\linux-arm64\libSystem.IO.Ports.Native.so
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\obj\Release\net8.0\linux-arm64\SIM7600G-H Modem Tool.csproj.AssemblyReference.cache
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\obj\Release\net8.0\linux-arm64\SIM7600G-H Modem Tool.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\obj\Release\net8.0\linux-arm64\SIM7600G-H Modem Tool.AssemblyInfoInputs.cache
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\obj\Release\net8.0\linux-arm64\SIM7600G-H Modem Tool.AssemblyInfo.cs
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\obj\Release\net8.0\linux-arm64\SIM7600G-H Modem Tool.csproj.CoreCompileInputs.cache
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\obj\Release\net8.0\linux-arm64\SIM7600G.BF70608D.Up2Date
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\obj\Release\net8.0\linux-arm64\SIM7600G-H Modem Tool.dll
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\obj\Release\net8.0\linux-arm64\refint\SIM7600G-H Modem Tool.dll
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\obj\Release\net8.0\linux-arm64\SIM7600G-H Modem Tool.genruntimeconfig.cache
+C:\Users\Kiern\Desktop\SIM7600G-H-Serial-Audio-V0.2\CellDialer\CellDialer\obj\Release\net8.0\linux-arm64\ref\SIM7600G-H Modem Tool.dll
