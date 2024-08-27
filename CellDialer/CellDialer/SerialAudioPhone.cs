@@ -305,16 +305,16 @@ namespace ModemTool
                 {
                     if (Console.KeyAvailable)
                     {
-                        var key = Console.ReadKey(true).Key;
-
-                        if (key == ConsoleKey.Escape)
+                        var keyInfo = Console.ReadKey(true);
+        
+                        if (keyInfo.Key == ConsoleKey.Escape)
                         {
                             isCallActive = false; // End the call if 'Esc' is pressed
                         }
                         else
                         {
                             // Check for DTMF tones (0-9, *, #, A, B, C, D)
-                            char dtmfTone = key switch
+                            char dtmfTone = keyInfo.Key switch
                             {
                                 ConsoleKey.D1 => '1',
                                 ConsoleKey.D2 => '2',
@@ -330,11 +330,14 @@ namespace ModemTool
                                 ConsoleKey.B => 'B',
                                 ConsoleKey.C => 'C',
                                 ConsoleKey.D => 'D',
-                                ConsoleKey.Oem1 => '*',
-                                ConsoleKey.OemPlus => '#',
+                                // Handle '*' and '#' based on the key combinations
+                                ConsoleKey.D8 when keyInfo.Modifiers.HasFlag(ConsoleModifiers.Shift) => '*', // Shift + 8
+                                ConsoleKey.D3 when keyInfo.Modifiers.HasFlag(ConsoleModifiers.Shift) => '#', // Shift + 3
+                                ConsoleKey.Multiply => '*', // Numpad *
+                                ConsoleKey.OemPlus when keyInfo.Modifiers.HasFlag(ConsoleModifiers.Shift) => '#', // Shift + = (in some layouts)
                                 _ => '\0' // Invalid character, ignored
                             };
-
+        
                             if (dtmfTone != '\0')
                             {
                                 SendDtmfTone(dtmfTone);
@@ -348,6 +351,7 @@ namespace ModemTool
                 Console.WriteLine("Error monitoring keyboard input: " + ex.Message);
             }
         }
+
 
         // Send an AT command through the serial port
         private void SendCommand(string command)
