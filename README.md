@@ -120,9 +120,9 @@ phone.StartCall("17805555555");
    dotnet add package System.IO.Ports
    dotnet add package System.Management
    ```
-3. Build and run the project:
+3. Build and run the project (You'll need to be in the directory with the csproj file):
    ```bash
-   dotnet build
+   dotnet build 'SIM7600G-H Modem Tool.csproj' --os <windows/linux>
    dotnet run
    ```
 
